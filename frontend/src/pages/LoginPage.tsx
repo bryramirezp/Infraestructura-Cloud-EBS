@@ -81,11 +81,11 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 relative">
       <div className="absolute top-4 left-4 z-10">
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           className="bg-white shadow-sm border border-gray-200 px-3 py-2 rounded-lg text-gray-700 hover:text-gray-900 transition-colors flex items-center"
-          aria-label="Ir al dashboard"
+          aria-label="Volver al inicio"
         >
-          <span>&larr;</span> Dashboard
+          <span>&larr;</span> Volver al inicio
         </button>
       </div>
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">

@@ -227,7 +227,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
         <button
           onClick={() => setIsUserFormOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          className="theme-button px-4 py-2 rounded-lg flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
           Agregar Usuario
@@ -379,7 +379,7 @@ export const AdminDashboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900">Gestión de Cursos</h3>
         <button
           onClick={() => setIsCourseFormOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          className="theme-button px-4 py-2 rounded-lg flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
           Nuevo Curso
@@ -541,31 +541,9 @@ export const AdminDashboard: React.FC = () => {
     <SidebarProvider>
       <UserSidebar user={user || undefined} />
       <SidebarInset>
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-8 py-4 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                {getGreeting()}, Administrador
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Panel de control - Escuela Bíblica Salem
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
-                A
-              </div>
-              <div>
-                <p className="text-sm font-medium">Administrador</p>
-                <p className="text-xs text-muted-foreground">Admin</p>
-              </div>
-            </div>
-          </div>
-        </header>
 
         {/* Dashboard Content */}
-        <div className="p-8 animate-fade-in">
+        <div className="flex-1 p-8 animate-fade-in">
           {/* Content */}
           {renderOverview()}
   

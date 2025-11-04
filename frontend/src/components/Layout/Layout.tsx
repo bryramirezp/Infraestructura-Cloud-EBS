@@ -1,7 +1,6 @@
 import React from 'react';
 import { Header } from './Header';
-import { Footer } from './Footer';
-import { UserSidebar, SidebarProvider, SidebarInset, useSidebar } from './Sidebar'; // Importar useSidebar
+import { UserSidebar, SidebarProvider, useSidebar } from './Sidebar'; // Importar useSidebar
 import { useAuth } from '../../contexts/AuthContext';
 
 interface LayoutProps {
@@ -18,11 +17,22 @@ const LayoutWithSidebar: React.FC<LayoutProps & { onLogout: () => void }> = ({ c
   const { toggleSidebar } = useSidebar(); // Obtener toggleSidebar del contexto
 
   return (
-    <div className="min-h-screen bg-gray-50 flex w-full">
+    <div className="min-h-screen bg-background flex w-full">
       <UserSidebar user={user} />
-      <div className="flex-1 flex flex-col w-full transition-all duration-200 md:ml-[var(--sidebar-width)] peer-data-[state=collapsed]:md:ml-[var(--sidebar-width-icon)]">
+      {/* ✨ CORRECCIÓN 1:
+          Se eliminó la clase 'md:ml-0'.
+          Esto permite que 'peer-data-[state=collapsed]:md:ml-[var(--sidebar-width-icon)]'
+          funcione correctamente y aplique el margen izquierdo pequeño.
+      */}
+      <div className="flex-1 flex flex-col w-full transition-all duration-200 peer-data-[state=expanded]:md:ml-[var(--sidebar-width)] peer-data-[state=collapsed]:md:ml-0">
         <Header user={user} onLogout={onLogout} onMenuToggle={toggleSidebar} /> {/* Pasar toggleSidebar */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 pt-14 sm:pt-16 w-full">
+        
+        {/* ✨ CORRECCIÓN 2:
+            Se eliminó 'pt-14 sm:pt-16'.
+            Como el Header ahora es 'sticky', ya no flota sobre el contenido.
+            Solo necesitamos un padding vertical normal ('py-*') para espaciar.
+        */}
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 w-full">
           {children}
         </main>
       </div>
@@ -40,9 +50,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, showSidebar = fa
   // If no sidebar is needed, render a simple layout
   if (!showSidebar) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         <Header user={user} onLogout={handleLogout} />
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 pt-14 sm:pt-16">
+        {/* ✨ CORRECCIÓN 2 (también aquí):
+            Se eliminó 'pt-14 sm:pt-16' por la misma razón.
+        */}
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           {children}
         </main>
       </div>
@@ -58,3 +71,4 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, showSidebar = fa
     </SidebarProvider>
   );
 };
+

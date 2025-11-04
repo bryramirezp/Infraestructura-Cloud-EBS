@@ -271,7 +271,7 @@ export const AdminSettingsPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900">Gestión de Administradores</h3>
           <button
             onClick={handleAddAdmin}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            className="theme-button px-4 py-2 rounded-lg flex items-center"
           >
             <Users className="h-4 w-4 mr-2" />
             Invitar Administrador
@@ -348,13 +348,13 @@ export const AdminSettingsPage: React.FC = () => {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Mantenimiento</h3>
         <div className="space-y-4">
-          <button className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">
+          <button className="bg-warning text-warning-foreground px-4 py-2 rounded-lg hover:bg-warning/90 transition-colors">
             Ejecutar Backup Manual
           </button>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors ml-3">
+          <button className="theme-button px-4 py-2 rounded-lg ml-3">
             Limpiar Cache
           </button>
-          <button className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors ml-3">
+          <button className="bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80 transition-colors ml-3">
             Ver Logs del Sistema
           </button>
         </div>
@@ -381,7 +381,7 @@ export const AdminSettingsPage: React.FC = () => {
             </button>
           </div>
         </header>
-        <div className="p-8 animate-fade-in">
+        <div className="flex-1 p-8 animate-fade-in">
 
         {/* Alert */}
         {alert && (
@@ -469,7 +469,7 @@ export const AdminSettingsPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleSaveTemplate(editingTemplate)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 theme-button rounded-lg"
                 >
                   Guardar
                 </button>

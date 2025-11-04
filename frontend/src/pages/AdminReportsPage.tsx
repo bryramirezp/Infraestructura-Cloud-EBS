@@ -87,7 +87,7 @@ export const AdminReportsPage: React.FC = () => {
                 <option value="90d">Últimos 90 días</option>
                 <option value="1y">Último año</option>
               </select>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center">
+              <button className="theme-button px-4 py-2 rounded-lg flex items-center">
                 <Download className="h-4 w-4 mr-2" />
                 Exportar
               </button>
@@ -95,7 +95,7 @@ export const AdminReportsPage: React.FC = () => {
           </div>
         </header>
 
-        <div className="p-8 animate-fade-in">
+        <div className="flex-1 p-8 animate-fade-in">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <StatCard

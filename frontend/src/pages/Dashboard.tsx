@@ -7,10 +7,10 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
   const courses = [
-    { id: 1, title: 'Introducción a la Biblia', instructor: 'Pastor Juan', progress: 75, color: 'bg-blue-500' },
-    { id: 2, title: 'Estudio del Nuevo Testamento', instructor: 'Pastora María', progress: 50, color: 'bg-green-500' },
-    { id: 3, title: 'Vida de Jesús', instructor: 'Pastor Carlos', progress: 90, color: 'bg-purple-500' },
-    { id: 4, title: 'Salmo 23', instructor: 'Pastora Ana', progress: 30, color: 'bg-orange-500' },
+    { id: 1, title: 'Introducción a la Biblia', instructor: 'Pastor Juan', progress: 75, color: 'bg-primary' },
+    { id: 2, title: 'Estudio del Nuevo Testamento', instructor: 'Pastora María', progress: 50, color: 'bg-success' },
+    { id: 3, title: 'Vida de Jesús', instructor: 'Pastor Carlos', progress: 90, color: 'bg-primary/80' },
+    { id: 4, title: 'Salmo 23', instructor: 'Pastora Ana', progress: 30, color: 'bg-warning' },
   ];
 
   return (

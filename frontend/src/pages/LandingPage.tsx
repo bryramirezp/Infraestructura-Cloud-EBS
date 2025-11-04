@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, Users, Award, Clock, CheckCircle, Star } from 'lucide-react';
+import { ArrowRight, Users, Award, Clock, CheckCircle, Star } from 'lucide-react';
+import { Header } from '../components/Layout/Header';
 
 export const LandingPage: React.FC = () => {
   const features = [
@@ -48,24 +49,27 @@ export const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background text-foreground theme-transition-all">
+      {/* Header */}
+      <Header />
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white">
+      <section className="bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white pt-20 theme-transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              El Futuro de la 
+              El Futuro de la
               <span className="text-primary-200"> Formación Bíblica Online</span>
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-primary-100 max-w-3xl mx-auto">
-              Una plataforma digital diseñada para facilitar la enseñanza bíblica en modalidad online 
-              y fortalecer tu proceso de formación espiritual a través de una experiencia accesible, 
+              Una plataforma digital diseñada para facilitar la enseñanza bíblica en modalidad online
+              y fortalecer tu proceso de formación espiritual a través de una experiencia accesible,
               interactiva y medible.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/contact"
-                className="bg-white text-primary-600 px-8 py-4 rounded-lg font-semibold hover:bg-primary-50 transition-all duration-300 flex items-center justify-center group"
+                className="bg-white text-primary-600 px-8 py-4 rounded-lg font-semibold hover:bg-primary-50 transition-all duration-300 flex items-center justify-center group hover-lift"
               >
                 Contáctanos
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -76,13 +80,13 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-card theme-transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-card-foreground mb-4">
               Beneficios de Estudiar en Nuestra Plataforma
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Herramientas diseñadas para ofrecerte una experiencia de aprendizaje espiritual única y efectiva.
             </p>
           </div>
@@ -91,15 +95,15 @@ export const LandingPage: React.FC = () => {
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <div 
+                <div
                   key={index}
-                  className="text-center p-6 rounded-xl bg-gray-50 hover:bg-primary-50 transition-all duration-300 group"
+                  className="text-center p-6 rounded-xl bg-muted hover:bg-accent transition-all duration-300 group hover-lift"
                 >
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 text-white rounded-full mb-4 group-hover:bg-primary-700 transition-colors">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-primary text-primary-foreground rounded-full mb-4 group-hover:bg-primary/90 transition-colors">
                     <Icon className="h-8 w-8" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
+                  <h3 className="text-xl font-semibold text-card-foreground mb-2">{feature.title}</h3>
+                  <p className="text-muted-foreground">{feature.description}</p>
                 </div>
               );
             })}
@@ -108,7 +112,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-primary-600 text-white">
+      <section className="py-20 bg-primary-600 text-white theme-transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div>
@@ -128,53 +132,53 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Target Audience Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-muted theme-transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-card-foreground mb-4">
               Una Plataforma Diseñada para Ti
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Para el Estudiante */}
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+            <div className="theme-card p-8 rounded-xl hover-lift">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-                  <Users className="h-8 w-8 text-primary-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
+                  <Users className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Para el Estudiante Comprometido</h3>
+                <h3 className="text-xl font-semibold text-card-foreground mb-2">Para el Estudiante Comprometido</h3>
               </div>
-              <p className="text-gray-600 text-center italic">
-                "Una experiencia de aprendizaje flexible que te permite estudiar a tu ritmo, 
+              <p className="text-muted-foreground text-center italic">
+                "Una experiencia de aprendizaje flexible que te permite estudiar a tu ritmo,
                 con herramientas para monitorear tu progreso y mantenerte motivado".
               </p>
             </div>
 
             {/* Para Nuestra Misión */}
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+            <div className="theme-card p-8 rounded-xl hover-lift">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                  <Award className="h-8 w-8 text-green-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/10 rounded-full mb-4">
+                  <Award className="h-8 w-8 text-green-500" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Para Nuestra Misión</h3>
+                <h3 className="text-xl font-semibold text-card-foreground mb-2">Para Nuestra Misión</h3>
               </div>
-              <p className="text-gray-600 text-center italic">
-                "Buscamos fortalecer el proceso de formación espiritual de la comunidad, 
+              <p className="text-muted-foreground text-center italic">
+                "Buscamos fortalecer el proceso de formación espiritual de la comunidad,
                 expandiendo el alcance de la enseñanza bíblica a través de una plataforma moderna y accesible".
               </p>
             </div>
 
             {/* Para una Educación de Calidad */}
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+            <div className="theme-card p-8 rounded-xl hover-lift">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
-                  <CheckCircle className="h-8 w-8 text-purple-600" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-500/10 rounded-full mb-4">
+                  <CheckCircle className="h-8 w-8 text-purple-500" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">Para una Educación de Calidad</h3>
+                <h3 className="text-xl font-semibold text-card-foreground mb-2">Para una Educación de Calidad</h3>
               </div>
-              <p className="text-gray-600 text-center italic">
-                "Garantizamos una educación de excelencia con un sistema de evaluación estandarizado 
+              <p className="text-muted-foreground text-center italic">
+                "Garantizamos una educación de excelencia con un sistema de evaluación estandarizado
                 y la emisión de certificados que acrediten formalmente tus conocimientos".
               </p>
             </div>
@@ -183,26 +187,26 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-muted theme-transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-card-foreground mb-4">
               Lo que Dicen Nuestros Usuarios
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-sm">
+              <div key={index} className="theme-card p-6 rounded-xl hover-lift">
                 <div className="flex items-center mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
                   ))}
                 </div>
-                <p className="text-gray-600 mb-4 italic">"{testimonial.content}"</p>
+                <p className="text-muted-foreground mb-4 italic">"{testimonial.content}"</p>
                 <div>
-                  <div className="font-semibold text-gray-900">{testimonial.name}</div>
-                  <div className="text-sm text-gray-500">{testimonial.role}</div>
+                  <div className="font-semibold text-card-foreground">{testimonial.name}</div>
+                  <div className="text-sm text-muted-foreground">{testimonial.role}</div>
                 </div>
               </div>
             ))}
@@ -211,7 +215,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-700 text-white theme-transition-all">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
             ¿Listo para Fortalecer tu Formación Espiritual?
@@ -221,7 +225,7 @@ export const LandingPage: React.FC = () => {
           </p>
           <Link
             to="/contact"
-            className="bg-white text-primary-600 px-8 py-4 rounded-lg font-semibold hover:bg-primary-50 transition-all duration-300 inline-flex items-center group"
+            className="bg-white text-primary-600 px-8 py-4 rounded-lg font-semibold hover:bg-primary-50 transition-all duration-300 inline-flex items-center group hover-lift"
           >
             Contáctanos
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />

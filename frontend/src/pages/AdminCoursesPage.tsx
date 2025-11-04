@@ -175,7 +175,7 @@ export const AdminCoursesPage: React.FC = () => {
             </div>
             <button
               onClick={handleCreateCourse}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+              className="theme-button px-4 py-2 rounded-lg flex items-center"
             >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Curso
@@ -183,7 +183,7 @@ export const AdminCoursesPage: React.FC = () => {
           </div>
         </header>
 
-        <div className="p-8 animate-fade-in">
+        <div className="flex-1 p-8 animate-fade-in">
           {/* Alert */}
           {alert && (
             <div className="mb-6">
@@ -296,13 +296,13 @@ export const AdminCoursesPage: React.FC = () => {
               <div className="flex space-x-3">
                 <button
                   onClick={() => setIsDeleteModalOpen(false)}
-                  className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="flex-1 bg-muted text-muted-foreground px-4 py-2 rounded-lg hover:bg-muted/80 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                  className="flex-1 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg hover:bg-destructive/90 transition-colors"
                 >
                   Eliminar
                 </button>

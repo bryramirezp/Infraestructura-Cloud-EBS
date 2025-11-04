@@ -22,28 +22,28 @@ export const StatCard: React.FC<StatCardProps> = ({
 }) => {
   const colorClasses = {
     blue: {
-      bg: 'bg-blue-100',
-      text: 'text-blue-600',
+      bg: 'bg-primary/10',
+      text: 'text-primary',
       border: 'border-blue-200'
     },
     green: {
-      bg: 'bg-green-100',
-      text: 'text-green-600',
+      bg: 'bg-success/10',
+      text: 'text-success',
       border: 'border-green-200'
     },
     purple: {
-      bg: 'bg-purple-100',
-      text: 'text-purple-600',
+      bg: 'bg-primary/5',
+      text: 'text-primary',
       border: 'border-purple-200'
     },
     orange: {
-      bg: 'bg-orange-100',
-      text: 'text-orange-600',
+      bg: 'bg-warning/10',
+      text: 'text-warning',
       border: 'border-orange-200'
     },
     red: {
-      bg: 'bg-red-100',
-      text: 'text-red-600',
+      bg: 'bg-destructive/10',
+      text: 'text-destructive',
       border: 'border-red-200'
     }
   };

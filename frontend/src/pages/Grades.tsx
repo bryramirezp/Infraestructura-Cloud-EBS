@@ -1,5 +1,3 @@
-import { SidebarProvider, SidebarInset } from "../components/ui/sidebar";
-import { UserSidebar } from "../components/Layout/Sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
@@ -100,11 +98,9 @@ const Grades = () => {
   const overallColorClass = getGradeColorClass(overallAverage);
 
   return (
-    <SidebarProvider>
-      <UserSidebar user={user || undefined} />
-      <SidebarInset>
+    <div className="flex-1 space-y-6 md:space-y-8 p-4 md:p-6 lg:p-8">
         {/* Mobile-First Design: Mejor jerarquía visual */}
-        <div className="space-y-6 md:space-y-8 p-4 md:p-6 lg:p-8">
+        <div className="space-y-6 md:space-y-8">
           {/* Hero Section para promedio - Mejor jerarquía visual */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl p-6 md:p-8 shadow-soft">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -186,8 +182,7 @@ const Grades = () => {
             ))}
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 

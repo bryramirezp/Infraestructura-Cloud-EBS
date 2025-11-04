@@ -1,7 +1,5 @@
 import React, { useMemo } from 'react'; // MEJORA: Importar useMemo
 import { useAuth } from '../contexts/AuthContext';
-import { SidebarProvider, SidebarInset } from '../components/ui/sidebar';
-import { UserSidebar } from '../components/Layout/Sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Calendar, Clock, AlertCircle, CheckCircle } from 'lucide-react';
@@ -256,11 +254,9 @@ export const AssignmentsPage: React.FC = () => {
   }
 
   return (
-    <SidebarProvider>
-      <UserSidebar user={user || undefined} />
-      <SidebarInset>
+    <div className="flex-1 space-y-6 md:space-y-8 p-4 md:p-6 lg:p-8">
         {/* Mobile-First Design: Mejor jerarquía y navegación contextual */}
-        <div className="space-y-6 md:space-y-8 p-4 md:p-6 lg:p-8">
+        <div className="space-y-6 md:space-y-8">
           {/* Hero Section */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl p-6 md:p-8 shadow-soft">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -279,16 +275,16 @@ export const AssignmentsPage: React.FC = () => {
           <div className="space-y-4">
             {/* Tabs para filtrar por estado */}
             <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-              <button className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm md:text-base">
+              <button className="px-4 py-2 theme-button rounded-lg text-sm md:text-base">
                 Todas ({processedAssignments.length})
               </button>
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm md:text-base">
+              <button className="px-4 py-2 theme-input border border-border bg-background text-foreground rounded-lg hover:bg-accent text-sm md:text-base">
                 Pendientes ({processedAssignments.filter(a => a.status === 'pending').length})
               </button>
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm md:text-base">
+              <button className="px-4 py-2 theme-input border border-border bg-background text-foreground rounded-lg hover:bg-accent text-sm md:text-base">
                 En Progreso ({processedAssignments.filter(a => a.status === 'in_progress').length})
               </button>
-              <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm md:text-base">
+              <button className="px-4 py-2 theme-input border border-border bg-background text-foreground rounded-lg hover:bg-accent text-sm md:text-base">
                 Completadas ({processedAssignments.filter(a => a.status === 'completed').length})
               </button>
             </div>
@@ -301,8 +297,7 @@ export const AssignmentsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 };
 
