@@ -16,18 +16,16 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 md:space-y-8">
       {/* Hero Section con mejor jerarquía */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl p-6 md:p-8 shadow-soft">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              ¡Bienvenido{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
-            </h1>
-            <p className="text-primary-100 text-sm md:text-base">Aquí está tu resumen bíblico</p>
-          </div>
-          <div className="text-center md:text-right">
-            <p className="text-primary-200 text-sm">Panel de</p>
-            <p className="text-xl md:text-2xl font-bold capitalize">{user?.role || 'Estudiante'}</p>
-          </div>
+      <div className="bg-[url('/banne.jpeg')] bg-cover bg-center text-white rounded-xl px-6 md:px-8 py-32 md:py-36 shadow-soft relative">
+        <div className="absolute top-6 left-6 md:top-8 md:left-8">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">
+            ¡Bienvenido{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
+          </h1>
+          <p className="text-primary-100 text-sm md:text-base">Aquí está tu resumen bíblico</p>
+        </div>
+        <div className="absolute top-6 right-6 md:top-8 md:right-8 text-right">
+          <p className="text-primary-200 text-sm">Panel de</p>
+          <p className="text-xl md:text-2xl font-bold capitalize">{user?.role || 'Estudiante'}</p>
         </div>
       </div>
 
