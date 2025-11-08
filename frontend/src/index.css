@@ -1,40 +1,63 @@
+/* Fuentes locales de la marca */
+@font-face {
+  font-family: 'Sans';
+  src: url('./assets/fonts/Sans.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trajan Pro';
+  src: url('./assets/fonts/TrajanPro3-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* Light theme - Clean and professional */
+    /* Light theme - Colores oficiales de la marca */
+    /* Fondo: Blanco (#FFFFFF) */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Texto principal: Negro (#000000) */
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 0%;
+    /* Primary: Azul oficial (#0404E4) */
+    --primary: 240 97% 45%;
+    --primary-foreground: 0 0% 100%;
+    /* Secondary: Gris oficial (#cfd1d1) */
+    --secondary: 180 2% 82%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 180 2% 96%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 180 2% 96%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --destructive-foreground: 0 0% 100%;
+    /* Border: Gris claro para separación */
+    --border: 180 2% 90%;
+    --input: 180 2% 90%;
+    /* Ring: Azul oficial para focus */
+    --ring: 240 97% 45%;
     --radius: 0.5rem;
 
     /* Sidebar light theme */
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 240 97% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 180 2% 95%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 180 2% 90%;
+    --sidebar-ring: 240 97% 45%;
 
     /* Animation settings */
     --animation-duration: 0.2s;
@@ -42,36 +65,42 @@
   }
 
   .dark {
-    /* Dark theme - Modern and comfortable */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    /* Dark theme - Colores oficiales de la marca */
+    /* Fondo: Negro oficial (#000000) - Usando #121212 para reducir fatiga visual */
+    --background: 0 0% 7%;
+    /* Texto principal: Gris oficial (#cfd1d1) */
+    --foreground: 180 2% 82%;
+    --card: 0 0% 10%;
+    --card-foreground: 180 2% 82%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 180 2% 82%;
+    /* Primary: Azul oficial (#0404E4) - Para títulos y botones */
+    --primary: 240 97% 45%;
+    --primary-foreground: 0 0% 100%; /* Siempre blanco sobre fondo azul */
+    /* Secondary: Gris oficial más oscuro */
+    --secondary: 180 2% 15%;
+    --secondary-foreground: 180 2% 82%;
+    --muted: 180 2% 15%;
+    --muted-foreground: 180 2% 60%;
+    --accent: 180 2% 15%;
+    --accent-foreground: 180 2% 82%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    /* Border: Gris más visible en modo oscuro */
+    --border: 180 2% 20%;
+    --input: 180 2% 20%;
+    /* Ring: Azul oficial para focus */
+    --ring: 240 97% 45%;
 
     /* Sidebar dark theme */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 94.1%;
-    --sidebar-primary-foreground: 240 5.9% 10%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 180 2% 82%;
+    --sidebar-primary: 240 97% 45%;
+    --sidebar-primary-foreground: 0 0% 100%; /* Siempre blanco sobre fondo azul */
+    --sidebar-accent: 180 2% 15%;
+    --sidebar-accent-foreground: 180 2% 82%;
+    --sidebar-border: 180 2% 20%;
+    --sidebar-ring: 240 97% 45%;
   }
 
   * {
@@ -81,9 +110,31 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    /* Fuente por defecto: Sans para contenido */
+    font-family: 'Sans', system-ui, sans-serif;
     /* Smooth transitions for theme changes */
     transition: background-color var(--animation-duration) var(--animation-easing),
                 color var(--animation-duration) var(--animation-easing);
+  }
+
+  /* Títulos usan Trajan Pro */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Trajan Pro', serif;
+    font-weight: 400;
+  }
+
+  /* Enlaces en párrafos para modo oscuro - Usar texto principal con subrayado */
+  .dark p a,
+  .dark article a:not([class*="button"]):not([class*="btn"]) {
+    color: hsl(var(--foreground));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity var(--animation-duration) var(--animation-easing);
+  }
+
+  .dark p a:hover,
+  .dark article a:not([class*="button"]):not([class*="btn"]):hover {
+    opacity: 0.8;
   }
 
   /* Enhanced focus states for accessibility */
@@ -137,12 +188,12 @@
   @media (prefers-contrast: high) {
     :root {
       --border: 0 0% 0%;
-      --ring: 0 0% 0%;
+      --ring: 240 97% 45%; /* Azul oficial para mejor visibilidad */
     }
 
     .dark {
-      --border: 0 0% 100%;
-      --ring: 0 0% 100%;
+      --border: 180 2% 82%; /* Gris oficial para mejor contraste */
+      --ring: 240 97% 45%; /* Azul oficial */
     }
   }
 }
@@ -185,6 +236,46 @@
 
   .theme-button:hover {
     background-color: hsl(var(--primary) / 0.9);
+  }
+
+  /* Regla global: Asegurar que elementos con fondo azul (primary) siempre tengan texto blanco */
+  /* Esto aplica a botones, enlaces y otros elementos con fondo azul */
+  .bg-primary:not([class*="bg-primary-50"]):not([class*="bg-primary-100"]):not([class*="bg-primary-200"]):not([class*="/10"]):not([class*="/5"]),
+  button.bg-primary:not([class*="/10"]):not([class*="/5"]),
+  a.bg-primary:not([class*="/10"]):not([class*="/5"]) {
+    color: white !important;
+  }
+
+  /* Para tonos oscuros de primary (600-900) - siempre texto blanco */
+  .bg-primary-600,
+  .bg-primary-700,
+  .bg-primary-800,
+  .bg-primary-900,
+  button[class*="bg-primary-6"],
+  button[class*="bg-primary-7"],
+  button[class*="bg-primary-8"],
+  button[class*="bg-primary-9"],
+  a[class*="bg-primary-6"],
+  a[class*="bg-primary-7"],
+  a[class*="bg-primary-8"],
+  a[class*="bg-primary-9"] {
+    color: white !important;
+  }
+
+  /* Para bg-blue (equivalente a primary) - siempre texto blanco en tonos oscuros */
+  .bg-blue-600,
+  .bg-blue-700,
+  .bg-blue-800,
+  .bg-blue-900,
+  button[class*="bg-blue-6"],
+  button[class*="bg-blue-7"],
+  button[class*="bg-blue-8"],
+  button[class*="bg-blue-9"],
+  a[class*="bg-blue-6"],
+  a[class*="bg-blue-7"],
+  a[class*="bg-blue-8"],
+  a[class*="bg-blue-9"] {
+    color: white !important;
   }
 
   .theme-input {
@@ -248,7 +339,7 @@
   @media print {
     .dark {
       --background: 0 0% 100%;
-      --foreground: 222.2 84% 4.9%;
+      --foreground: 0 0% 0%;
       color: hsl(var(--foreground));
       background-color: hsl(var(--background));
     }

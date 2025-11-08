@@ -1,0 +1,7 @@
+/**
+ * Entidad: Module
+ * Exports públicos de la entidad Module
+ */
+
+export * from './model/types';
+

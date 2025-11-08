@@ -2,7 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import './aws-config';
+import './shared/config/aws';
+import { initTheme } from './app/styles/theme';
+
+// Inicializar tema antes de renderizar
+initTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

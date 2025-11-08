@@ -176,18 +176,6 @@ Utilizamos una paleta de colores basada en azules primarios, con tonos neutros y
 
 Estos estándares deben aplicarse en todos los nuevos componentes y páginas para mantener la coherencia visual con la landing page.
 
-## 📁 Estructura del Proyecto
-
-```
-src/
-├── components/          # Componentes reutilizables
-├── contexts/            # Contextos de React (ej. AuthContext)
-├── pages/               # Páginas de la aplicación
-├── App.tsx              # Componente principal
-├── main.tsx             # Punto de entrada de la aplicación
-└── index.css            # Estilos globales
-amplify/                 # Configuración del backend de AWS Amplify (autogenerado)
-```
 
 ## 🚀 Instalación y Configuración en la Nube
 

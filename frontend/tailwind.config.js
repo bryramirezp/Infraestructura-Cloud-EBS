@@ -1,23 +1,27 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        /* Paleta oficial de colores de la marca */
         primary: {
-          50: '#f0f0ff',
-          100: '#e0e0ff',
-          200: '#c1c1ff',
-          300: '#a1a1ff',
-          400: '#6262ff',
-          500: '#2323ff',
-          600: '#0404E4',
-          700: '#0303B3',
-          800: '#020282',
-          900: '#010151',
+          /* Azul oficial (#0404E4) como color principal */
+          50: '#e6e6ff',
+          100: '#ccccff',
+          200: '#9999ff',
+          300: '#6666ff',
+          400: '#3333ff',
+          500: '#0404E4', /* Color oficial principal */
+          600: '#0303b3',
+          700: '#020282',
+          800: '#010151',
+          900: '#000020',
+          DEFAULT: '#0404E4', /* Color por defecto */
         },
-        secondary: '#f8f9fa',
-        neutral: '#cfd1d1',
+        secondary: '#cfd1d1', /* Gris oficial */
+        neutral: '#cfd1d1', /* Gris oficial */
         // Design System Colors
         success: {
           50: '#f0fdf4',
@@ -52,10 +56,26 @@ export default {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        // Sidebar colors
+        sidebar: {
+          background: 'hsl(var(--sidebar-background))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+          primary: 'hsl(var(--sidebar-primary))',
+          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+          accent: 'hsl(var(--sidebar-accent))',
+          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+          border: 'hsl(var(--sidebar-border))',
+          ring: 'hsl(var(--sidebar-ring))',
+        },
       },
       fontFamily: {
-        trajan: ['Crimson Pro', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        /* Fuentes oficiales de la marca */
+        /* Sans: Para texto normal y contenido */
+        sans: ['Sans', 'system-ui', 'sans-serif'],
+        /* Trajan Pro: Para títulos y encabezados */
+        trajan: ['Trajan Pro', 'serif'],
+        /* Alias para títulos */
+        heading: ['Trajan Pro', 'serif'],
       },
       fontSize: {
         'xs': ['0.75rem', { lineHeight: '1rem' }],

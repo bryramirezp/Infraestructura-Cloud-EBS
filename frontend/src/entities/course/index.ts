@@ -1,0 +1,7 @@
+/**
+ * Entidad: Course
+ * Exports públicos de la entidad Course
+ */
+
+export * from './model/types';
+
