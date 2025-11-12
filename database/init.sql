@@ -14,8 +14,10 @@ CREATE TYPE estado_inscripcion AS ENUM ('ACTIVA', 'PAUSADA', 'CONCLUIDA', 'REPRO
 CREATE TYPE resultado_intento AS ENUM ('APROBADO', 'NO_APROBADO');
 CREATE TYPE tipo_pregunta AS ENUM ('ABIERTA', 'OPCION_MULTIPLE', 'VERDADERO_FALSO');
 CREATE TYPE estado_entrega AS ENUM ('PENDIENTE', 'ENTREGADA', 'CALIFICADA');
-CREATE TYPE tipo_feedback AS ENUM ('CURSO', 'MODULO', 'TAREA', 'QUIZ');
-CREATE TYPE visibilidad_feedback AS ENUM ('PRIVADO', 'PUBLICO', 'CURSO');
+
+-- =====================================================
+-- Tablas de Usuarios y Acceso
+-- =====================================================
 
 CREATE TABLE usuario (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,6 +44,10 @@ CREATE TABLE usuario_rol (
   asignado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (usuario_id, rol_id)
 );
+
+-- =====================================================
+-- Tablas de Contenido: Módulo y Materias
+-- =====================================================
 
 CREATE TABLE curso (
   id UUID PRIMARY KEY,
@@ -106,7 +112,22 @@ CREATE TABLE leccion_contenido (
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =====================================================
+-- Tablas de Evaluaciones
+-- =====================================================
+
 CREATE TABLE quiz (
+  id UUID PRIMARY KEY,
+  leccion_id UUID NOT NULL REFERENCES leccion(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  titulo VARCHAR(200) NOT NULL,
+  publicado BOOLEAN,
+  aleatorio BOOLEAN,
+  guarda_calificacion BOOLEAN,
+  creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE examen_final (
   id UUID PRIMARY KEY,
   curso_id UUID NOT NULL REFERENCES curso(id) ON DELETE CASCADE ON UPDATE CASCADE,
   titulo VARCHAR(200) NOT NULL,
@@ -119,12 +140,17 @@ CREATE TABLE quiz (
 
 CREATE TABLE pregunta (
   id UUID PRIMARY KEY,
-  quiz_id UUID NOT NULL REFERENCES quiz(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  quiz_id UUID REFERENCES quiz(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  examen_final_id UUID REFERENCES examen_final(id) ON DELETE CASCADE ON UPDATE CASCADE,
   enunciado TEXT NOT NULL,
   puntos INT,
   orden INT,
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_pregunta_quiz_o_examen CHECK (
+    (quiz_id IS NOT NULL AND examen_final_id IS NULL) OR
+    (quiz_id IS NULL AND examen_final_id IS NOT NULL)
+  )
 );
 
 CREATE TABLE pregunta_config (
@@ -177,20 +203,6 @@ CREATE TABLE tarea (
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE feedback (
-  id UUID PRIMARY KEY,
-  usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  autor_id UUID REFERENCES usuario(id) ON DELETE SET NULL ON UPDATE CASCADE,
-  tipo_entidad tipo_feedback NOT NULL,
-  entidad_id UUID NOT NULL,
-  contenido TEXT NOT NULL,
-  puntuacion INT,
-  visibilidad visibilidad_feedback DEFAULT 'PRIVADO',
-  resuelto BOOLEAN DEFAULT FALSE,
-  creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE entrega (
   id UUID PRIMARY KEY,
   tarea_id UUID NOT NULL REFERENCES tarea(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -199,10 +211,14 @@ CREATE TABLE entrega (
   calificacion NUMERIC(5,2),
   entregado_en TIMESTAMPTZ,
   calificado_en TIMESTAMPTZ,
+  permitir_nuevo_intento BOOLEAN NOT NULL DEFAULT FALSE,
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (tarea_id, usuario_id)
+  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =====================================================
+-- Tablas de Inscripción y Progreso
+-- =====================================================
 
 CREATE TABLE inscripcion_curso (
   id UUID PRIMARY KEY,
@@ -219,20 +235,24 @@ CREATE TABLE inscripcion_curso (
   CONSTRAINT chk_fechas_inscripcion CHECK (fecha_conclusion IS NULL OR fecha_conclusion >= fecha_inscripcion)
 );
 
-
 CREATE TABLE intento (
   id UUID PRIMARY KEY,
   usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE NO ACTION ON UPDATE CASCADE,
-  quiz_id UUID NOT NULL REFERENCES quiz(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  quiz_id UUID REFERENCES quiz(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  examen_final_id UUID REFERENCES examen_final(id) ON DELETE RESTRICT ON UPDATE CASCADE,
   inscripcion_curso_id UUID NOT NULL REFERENCES inscripcion_curso(id) ON DELETE CASCADE ON UPDATE CASCADE,
   numero_intento INT NOT NULL,
   puntaje NUMERIC(5,2),
   resultado resultado_intento,
   iniciado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   finalizado_en TIMESTAMPTZ,
+  permitir_nuevo_intento BOOLEAN NOT NULL DEFAULT FALSE,
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (usuario_id, quiz_id, inscripcion_curso_id, numero_intento)
+  CONSTRAINT chk_intento_quiz_o_examen CHECK (
+    (quiz_id IS NOT NULL AND examen_final_id IS NULL) OR
+    (quiz_id IS NULL AND examen_final_id IS NOT NULL)
+  )
 );
 
 CREATE TABLE intento_pregunta (
@@ -260,18 +280,25 @@ CREATE TABLE regla_acreditacion (
   id UUID PRIMARY KEY,
   curso_id UUID NOT NULL REFERENCES curso(id) ON DELETE CASCADE ON UPDATE CASCADE,
   quiz_id UUID REFERENCES quiz(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  examen_final_id UUID REFERENCES examen_final(id) ON DELETE CASCADE ON UPDATE CASCADE,
   min_score_aprobatorio NUMERIC(5,2) NOT NULL DEFAULT 80.00,
   max_intentos_quiz INT NOT NULL DEFAULT 3,
   bloquea_curso_por_reprobacion_quiz BOOLEAN NOT NULL DEFAULT TRUE,
   activa BOOLEAN NOT NULL DEFAULT TRUE,
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_regla_quiz_o_examen CHECK (
+    (quiz_id IS NOT NULL AND examen_final_id IS NULL) OR
+    (quiz_id IS NULL AND examen_final_id IS NOT NULL) OR
+    (quiz_id IS NULL AND examen_final_id IS NULL)
+  )
 );
 
 CREATE TABLE certificado (
   id UUID PRIMARY KEY,
   inscripcion_curso_id UUID NOT NULL REFERENCES inscripcion_curso(id) ON DELETE CASCADE ON UPDATE CASCADE,
   quiz_id UUID REFERENCES quiz(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  examen_final_id UUID REFERENCES examen_final(id) ON DELETE SET NULL ON UPDATE CASCADE,
   intento_id UUID REFERENCES intento(id) ON DELETE SET NULL ON UPDATE CASCADE,
   folio VARCHAR(50),
   hash_verificacion VARCHAR(128) UNIQUE,
@@ -281,6 +308,10 @@ CREATE TABLE certificado (
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =====================================================
+-- Tablas de Interacción
+-- =====================================================
 
 CREATE TABLE foro_comentario (
   id UUID PRIMARY KEY,
@@ -312,19 +343,19 @@ CREATE INDEX idx_modulo_curso_curso_id ON modulo_curso(curso_id);
 CREATE INDEX idx_guia_estudio_curso_id ON guia_estudio(curso_id);
 CREATE INDEX idx_leccion_modulo_id ON leccion(modulo_id);
 CREATE INDEX idx_leccion_contenido_leccion_id ON leccion_contenido(leccion_id);
-CREATE INDEX idx_quiz_curso_id ON quiz(curso_id);
+CREATE INDEX idx_quiz_leccion_id ON quiz(leccion_id);
+CREATE INDEX idx_examen_final_curso_id ON examen_final(curso_id);
 CREATE INDEX idx_pregunta_quiz_id ON pregunta(quiz_id);
+CREATE INDEX idx_pregunta_examen_final_id ON pregunta(examen_final_id);
 CREATE INDEX idx_opcion_pregunta_id ON opcion(pregunta_id);
 CREATE INDEX idx_tarea_curso_id ON tarea(curso_id);
-CREATE INDEX idx_feedback_usuario_id ON feedback(usuario_id);
-CREATE INDEX idx_feedback_autor_id ON feedback(autor_id);
-CREATE INDEX idx_feedback_tipo_entidad ON feedback(tipo_entidad, entidad_id);
 CREATE INDEX idx_entrega_tarea_id ON entrega(tarea_id);
 CREATE INDEX idx_entrega_usuario_id ON entrega(usuario_id);
 CREATE INDEX idx_inscripcion_curso_usuario_id ON inscripcion_curso(usuario_id);
 CREATE INDEX idx_inscripcion_curso_curso_id ON inscripcion_curso(curso_id);
 CREATE INDEX idx_intento_usuario_id ON intento(usuario_id);
 CREATE INDEX idx_intento_quiz_id ON intento(quiz_id);
+CREATE INDEX idx_intento_examen_final_id ON intento(examen_final_id);
 CREATE INDEX idx_intento_inscripcion_curso_id ON intento(inscripcion_curso_id);
 CREATE INDEX idx_intento_pregunta_intento_id ON intento_pregunta(intento_id);
 CREATE INDEX idx_intento_pregunta_pregunta_id ON intento_pregunta(pregunta_id);
@@ -332,8 +363,10 @@ CREATE INDEX idx_respuesta_intento_pregunta_id ON respuesta(intento_pregunta_id)
 CREATE INDEX idx_respuesta_opcion_id ON respuesta(opcion_id);
 CREATE INDEX idx_regla_acreditacion_curso_id ON regla_acreditacion(curso_id);
 CREATE INDEX idx_regla_acreditacion_quiz_id ON regla_acreditacion(quiz_id);
+CREATE INDEX idx_regla_acreditacion_examen_final_id ON regla_acreditacion(examen_final_id);
 CREATE INDEX idx_certificado_inscripcion_curso_id ON certificado(inscripcion_curso_id);
 CREATE INDEX idx_certificado_quiz_id ON certificado(quiz_id);
+CREATE INDEX idx_certificado_examen_final_id ON certificado(examen_final_id);
 CREATE INDEX idx_certificado_intento_id ON certificado(intento_id);
 CREATE INDEX idx_foro_comentario_usuario_id ON foro_comentario(usuario_id);
 CREATE INDEX idx_foro_comentario_curso_id ON foro_comentario(curso_id);
@@ -346,13 +379,13 @@ CREATE INDEX idx_foro_comentario_leccion_id ON foro_comentario(leccion_id);
 CREATE INDEX idx_curso_publicado ON curso(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_modulo_publicado ON modulo(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_quiz_publicado ON quiz(publicado) WHERE publicado = TRUE;
+CREATE INDEX idx_examen_final_publicado ON examen_final(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_leccion_publicado ON leccion(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_tarea_publicado ON tarea(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_guia_estudio_activo ON guia_estudio(activo) WHERE activo = TRUE;
 CREATE INDEX idx_inscripcion_curso_estado ON inscripcion_curso(estado);
 CREATE INDEX idx_inscripcion_curso_acreditado ON inscripcion_curso(acreditado) WHERE acreditado = TRUE;
 CREATE INDEX idx_intento_resultado ON intento(resultado);
-CREATE INDEX idx_regla_acreditacion_activa ON regla_acreditacion(activa) WHERE activa = TRUE;
 
 -- =====================================================
 -- Índices compuestos para consultas comunes
@@ -361,6 +394,7 @@ CREATE INDEX idx_regla_acreditacion_activa ON regla_acreditacion(activa) WHERE a
 CREATE INDEX idx_inscripcion_curso_usuario_estado ON inscripcion_curso(usuario_id, estado);
 CREATE INDEX idx_inscripcion_curso_curso_estado ON inscripcion_curso(curso_id, estado);
 CREATE INDEX idx_intento_usuario_quiz ON intento(usuario_id, quiz_id);
+CREATE INDEX idx_intento_usuario_examen_final ON intento(usuario_id, examen_final_id);
 CREATE INDEX idx_intento_inscripcion_resultado ON intento(inscripcion_curso_id, resultado);
 CREATE INDEX idx_foro_comentario_curso_leccion ON foro_comentario(curso_id, leccion_id);
 
@@ -371,6 +405,7 @@ CREATE INDEX idx_foro_comentario_curso_leccion ON foro_comentario(curso_id, lecc
 CREATE INDEX idx_leccion_modulo_orden ON leccion(modulo_id, orden);
 CREATE INDEX idx_leccion_contenido_leccion_orden ON leccion_contenido(leccion_id, orden);
 CREATE INDEX idx_pregunta_quiz_orden ON pregunta(quiz_id, orden);
+CREATE INDEX idx_pregunta_examen_final_orden ON pregunta(examen_final_id, orden);
 CREATE INDEX idx_opcion_pregunta_orden ON opcion(pregunta_id, orden);
 CREATE INDEX idx_foro_comentario_leccion_creado ON foro_comentario(leccion_id, creado_en DESC);
 CREATE INDEX idx_intento_inscripcion_finalizado ON intento(inscripcion_curso_id, finalizado_en DESC);
@@ -381,11 +416,15 @@ CREATE INDEX idx_intento_inscripcion_finalizado ON intento(inscripcion_curso_id,
 
 CREATE UNIQUE INDEX idx_regla_curso_sin_quiz_activa
 ON regla_acreditacion (curso_id)
-WHERE quiz_id IS NULL AND activa = TRUE;
+WHERE quiz_id IS NULL AND examen_final_id IS NULL AND activa = TRUE;
 
 CREATE UNIQUE INDEX idx_regla_curso_quiz_activa
 ON regla_acreditacion (curso_id, quiz_id)
 WHERE quiz_id IS NOT NULL AND activa = TRUE;
+
+CREATE UNIQUE INDEX idx_regla_curso_examen_final_activa
+ON regla_acreditacion (curso_id, examen_final_id)
+WHERE examen_final_id IS NOT NULL AND activa = TRUE;
 
 CREATE UNIQUE INDEX idx_certificado_valido_unico
 ON certificado (inscripcion_curso_id)
@@ -402,6 +441,14 @@ SELECT
 FROM quiz q
 LEFT JOIN pregunta p ON p.quiz_id = q.id
 GROUP BY q.id;
+
+CREATE VIEW examen_final_con_preguntas AS
+SELECT 
+  ef.*,
+  COUNT(p.id) as numero_preguntas
+FROM examen_final ef
+LEFT JOIN pregunta p ON p.examen_final_id = ef.id
+GROUP BY ef.id;
 
 -- =====================================================
 -- Vista: inscripcion_modulo_calculada
@@ -515,10 +562,10 @@ CREATE INDEX idx_curso_descripcion_gin ON curso USING GIN (descripcion gin_trgm_
 CREATE INDEX idx_modulo_titulo_gin ON modulo USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_usuario_nombre_gin ON usuario USING GIN (nombre gin_trgm_ops);
 CREATE INDEX idx_usuario_apellido_gin ON usuario USING GIN (apellido gin_trgm_ops);
-CREATE INDEX idx_feedback_contenido_gin ON feedback USING GIN (contenido gin_trgm_ops);
 CREATE INDEX idx_foro_comentario_contenido_gin ON foro_comentario USING GIN (contenido gin_trgm_ops);
 CREATE INDEX idx_leccion_titulo_gin ON leccion USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_tarea_titulo_gin ON tarea USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_tarea_descripcion_gin ON tarea USING GIN (descripcion gin_trgm_ops);
 CREATE INDEX idx_quiz_titulo_gin ON quiz USING GIN (titulo gin_trgm_ops);
+CREATE INDEX idx_examen_final_titulo_gin ON examen_final USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_pregunta_enunciado_gin ON pregunta USING GIN (enunciado gin_trgm_ops);

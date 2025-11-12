@@ -9,7 +9,8 @@
 -- Función: validar_max_intentos
 -- =====================================================
 -- Valida que un usuario no exceda el máximo de intentos
--- permitidos para un quiz según las reglas de acreditación activas.
+-- permitidos para un quiz o examen final según las reglas
+-- de acreditación activas.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION validar_max_intentos()
@@ -19,32 +20,59 @@ DECLARE
   intentos_actuales INT;
   curso_id_param UUID;
 BEGIN
-  SELECT q.curso_id INTO curso_id_param
-  FROM quiz q
-  WHERE q.id = NEW.quiz_id;
+  -- Obtener curso_id según si es quiz o examen final
+  IF NEW.quiz_id IS NOT NULL THEN
+    SELECT c.id INTO curso_id_param
+    FROM quiz q
+    JOIN leccion l ON l.id = q.leccion_id
+    JOIN modulo_curso mc ON mc.modulo_id = l.modulo_id
+    JOIN curso c ON c.id = mc.curso_id
+    WHERE q.id = NEW.quiz_id
+    LIMIT 1;
+  ELSIF NEW.examen_final_id IS NOT NULL THEN
+    SELECT curso_id INTO curso_id_param
+    FROM examen_final
+    WHERE id = NEW.examen_final_id;
+  ELSE
+    RAISE EXCEPTION 'El intento debe tener quiz_id o examen_final_id';
+  END IF;
   
+  -- Obtener max_intentos de regla de acreditación activa
   SELECT ra.max_intentos_quiz INTO max_intentos
   FROM regla_acreditacion ra
   WHERE ra.activa = TRUE
+    AND ra.curso_id = curso_id_param
     AND (
-      (ra.quiz_id = NEW.quiz_id AND ra.curso_id = curso_id_param) OR
-      (ra.quiz_id IS NULL AND ra.curso_id = curso_id_param)
+      (NEW.quiz_id IS NOT NULL AND ra.quiz_id = NEW.quiz_id) OR
+      (NEW.examen_final_id IS NOT NULL AND ra.examen_final_id = NEW.examen_final_id) OR
+      (ra.quiz_id IS NULL AND ra.examen_final_id IS NULL)
     )
-  ORDER BY CASE WHEN ra.quiz_id IS NOT NULL THEN 1 ELSE 2 END
+  ORDER BY 
+    CASE WHEN ra.quiz_id IS NOT NULL OR ra.examen_final_id IS NOT NULL THEN 1 ELSE 2 END
   LIMIT 1;
   
+  -- Si no hay regla, usar default
   IF max_intentos IS NULL THEN
     max_intentos := 3;
   END IF;
   
-  SELECT COUNT(*) INTO intentos_actuales
-  FROM intento
-  WHERE usuario_id = NEW.usuario_id
-    AND quiz_id = NEW.quiz_id
-    AND inscripcion_curso_id = NEW.inscripcion_curso_id;
+  -- Contar intentos actuales
+  IF NEW.quiz_id IS NOT NULL THEN
+    SELECT COUNT(*) INTO intentos_actuales
+    FROM intento
+    WHERE usuario_id = NEW.usuario_id
+      AND quiz_id = NEW.quiz_id
+      AND inscripcion_curso_id = NEW.inscripcion_curso_id;
+  ELSIF NEW.examen_final_id IS NOT NULL THEN
+    SELECT COUNT(*) INTO intentos_actuales
+    FROM intento
+    WHERE usuario_id = NEW.usuario_id
+      AND examen_final_id = NEW.examen_final_id
+      AND inscripcion_curso_id = NEW.inscripcion_curso_id;
+  END IF;
   
   IF intentos_actuales >= max_intentos THEN
-    RAISE EXCEPTION 'Máximo de intentos alcanzado para este quiz. Máximo permitido: %', max_intentos;
+    RAISE EXCEPTION 'Máximo de intentos alcanzado. Máximo permitido: %', max_intentos;
   END IF;
   
   RETURN NEW;
@@ -67,12 +95,14 @@ EXECUTE FUNCTION validar_max_intentos();
 -- Función: validar_intento_inscripcion
 -- =====================================================
 -- Valida que el usuario_id coincida con la inscripción
--- y que el quiz pertenezca al curso de la inscripción.
+-- y que el quiz pertenezca a la lección del curso de la
+-- inscripción, o que el examen final pertenezca al curso.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION validar_intento_inscripcion()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Validar que el usuario coincide con la inscripción
   IF NOT EXISTS (
     SELECT 1 FROM inscripcion_curso
     WHERE id = NEW.inscripcion_curso_id
@@ -81,13 +111,34 @@ BEGIN
     RAISE EXCEPTION 'El usuario no coincide con la inscripción';
   END IF;
   
-  IF NOT EXISTS (
-    SELECT 1 FROM inscripcion_curso ic
-    JOIN quiz q ON q.curso_id = ic.curso_id
-    WHERE ic.id = NEW.inscripcion_curso_id
-      AND q.id = NEW.quiz_id
-  ) THEN
-    RAISE EXCEPTION 'El quiz no pertenece al curso de la inscripción';
+  -- Validar quiz: debe pertenecer a una lección del curso de la inscripción
+  IF NEW.quiz_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 
+      FROM inscripcion_curso ic
+      JOIN curso c ON c.id = ic.curso_id
+      JOIN modulo_curso mc ON mc.curso_id = c.id
+      JOIN modulo m ON m.id = mc.modulo_id
+      JOIN leccion l ON l.modulo_id = m.id
+      JOIN quiz q ON q.leccion_id = l.id
+      WHERE ic.id = NEW.inscripcion_curso_id
+        AND q.id = NEW.quiz_id
+    ) THEN
+      RAISE EXCEPTION 'El quiz no pertenece a una lección del curso de la inscripción';
+    END IF;
+  END IF;
+  
+  -- Validar examen final: debe pertenecer al curso de la inscripción
+  IF NEW.examen_final_id IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 
+      FROM inscripcion_curso ic
+      JOIN examen_final ef ON ef.curso_id = ic.curso_id
+      WHERE ic.id = NEW.inscripcion_curso_id
+        AND ef.id = NEW.examen_final_id
+    ) THEN
+      RAISE EXCEPTION 'El examen final no pertenece al curso de la inscripción';
+    END IF;
   END IF;
   
   RETURN NEW;
@@ -97,13 +148,124 @@ $$ LANGUAGE plpgsql;
 -- =====================================================
 -- Trigger: trg_validar_intento_inscripcion
 -- =====================================================
--- Valida las relaciones circulares en intento.
+-- Valida las relaciones en intento.
 -- =====================================================
 
 CREATE TRIGGER trg_validar_intento_inscripcion
 BEFORE INSERT OR UPDATE ON intento
 FOR EACH ROW
 EXECUTE FUNCTION validar_intento_inscripcion();
+
+-- =====================================================
+-- Función: validar_examen_final_prerequisitos
+-- =====================================================
+-- Valida que todos los quizzes de las lecciones del curso
+-- estén completados antes de permitir el examen final.
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION validar_examen_final_prerequisitos()
+RETURNS TRIGGER AS $$
+DECLARE
+  curso_id_param UUID;
+  quizzes_pendientes INT;
+BEGIN
+  -- Solo validar si es un intento de examen final
+  IF NEW.examen_final_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+  
+  -- Obtener curso_id del examen final
+  SELECT curso_id INTO curso_id_param
+  FROM examen_final
+  WHERE id = NEW.examen_final_id;
+  
+  -- Contar quizzes de lecciones del curso que no tienen intentos aprobados
+  SELECT COUNT(*) INTO quizzes_pendientes
+  FROM leccion l
+  JOIN modulo_curso mc ON mc.modulo_id = l.modulo_id
+  JOIN curso c ON c.id = mc.curso_id
+  JOIN quiz q ON q.leccion_id = l.id
+  WHERE c.id = curso_id_param
+    AND NOT EXISTS (
+      SELECT 1
+      FROM intento i
+      WHERE i.quiz_id = q.id
+        AND i.inscripcion_curso_id = NEW.inscripcion_curso_id
+        AND i.resultado = 'APROBADO'
+    );
+  
+  IF quizzes_pendientes > 0 THEN
+    RAISE EXCEPTION 'No se puede realizar el examen final. Faltan % quiz(es) por completar y aprobar', quizzes_pendientes;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- Trigger: trg_validar_examen_final_prerequisitos
+-- =====================================================
+-- Valida que todos los quizzes estén completados antes
+-- de permitir el examen final.
+-- =====================================================
+
+CREATE TRIGGER trg_validar_examen_final_prerequisitos
+BEFORE INSERT ON intento
+FOR EACH ROW
+WHEN (NEW.examen_final_id IS NOT NULL)
+EXECUTE FUNCTION validar_examen_final_prerequisitos();
+
+-- =====================================================
+-- Función: validar_nuevo_intento_permitido
+-- =====================================================
+-- Valida que permitir_nuevo_intento = TRUE antes de
+-- crear un nuevo intento (excepto el primer intento).
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION validar_nuevo_intento_permitido()
+RETURNS TRIGGER AS $$
+DECLARE
+  intentos_previos INT;
+  ultimo_intento_permitir BOOLEAN;
+BEGIN
+  -- Contar intentos previos
+  IF NEW.quiz_id IS NOT NULL THEN
+    SELECT COUNT(*), COALESCE(MAX(permitir_nuevo_intento), FALSE)
+    INTO intentos_previos, ultimo_intento_permitir
+    FROM intento
+    WHERE usuario_id = NEW.usuario_id
+      AND quiz_id = NEW.quiz_id
+      AND inscripcion_curso_id = NEW.inscripcion_curso_id;
+  ELSIF NEW.examen_final_id IS NOT NULL THEN
+    SELECT COUNT(*), COALESCE(MAX(permitir_nuevo_intento), FALSE)
+    INTO intentos_previos, ultimo_intento_permitir
+    FROM intento
+    WHERE usuario_id = NEW.usuario_id
+      AND examen_final_id = NEW.examen_final_id
+      AND inscripcion_curso_id = NEW.inscripcion_curso_id;
+  ELSE
+    RETURN NEW;
+  END IF;
+  
+  -- Si hay intentos previos, el último debe tener permitir_nuevo_intento = TRUE
+  IF intentos_previos > 0 AND NOT ultimo_intento_permitir THEN
+    RAISE EXCEPTION 'No se puede crear un nuevo intento. El instructor debe permitir un nuevo intento estableciendo permitir_nuevo_intento = TRUE en el intento anterior';
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================
+-- Trigger: trg_validar_nuevo_intento_permitido
+-- =====================================================
+-- Valida que se permita un nuevo intento antes de crearlo.
+-- =====================================================
+
+CREATE TRIGGER trg_validar_nuevo_intento_permitido
+BEFORE INSERT ON intento
+FOR EACH ROW
+EXECUTE FUNCTION validar_nuevo_intento_permitido();
 
 -- =====================================================
 -- Función: validar_respuesta_tipo
@@ -154,100 +316,6 @@ FOR EACH ROW
 EXECUTE FUNCTION validar_respuesta_tipo();
 
 -- =====================================================
--- Función: validar_feedback_entidad
--- =====================================================
--- Valida que el entidad_id corresponda a una entidad válida
--- según el tipo_entidad.
--- =====================================================
-
-CREATE OR REPLACE FUNCTION validar_feedback_entidad()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.tipo_entidad = 'CURSO' AND NOT EXISTS (SELECT 1 FROM curso WHERE id = NEW.entidad_id) THEN
-    RAISE EXCEPTION 'El entidad_id no corresponde a un curso válido';
-  END IF;
-  
-  IF NEW.tipo_entidad = 'MODULO' AND NOT EXISTS (SELECT 1 FROM modulo WHERE id = NEW.entidad_id) THEN
-    RAISE EXCEPTION 'El entidad_id no corresponde a un módulo válido';
-  END IF;
-  
-  IF NEW.tipo_entidad = 'TAREA' AND NOT EXISTS (SELECT 1 FROM tarea WHERE id = NEW.entidad_id) THEN
-    RAISE EXCEPTION 'El entidad_id no corresponde a una tarea válida';
-  END IF;
-  
-  IF NEW.tipo_entidad = 'QUIZ' AND NOT EXISTS (SELECT 1 FROM quiz WHERE id = NEW.entidad_id) THEN
-    RAISE EXCEPTION 'El entidad_id no corresponde a un quiz válido';
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- =====================================================
--- Trigger: trg_validar_feedback_entidad
--- =====================================================
--- Valida que el entidad_id corresponda a una entidad válida.
--- =====================================================
-
-CREATE TRIGGER trg_validar_feedback_entidad
-BEFORE INSERT OR UPDATE ON feedback
-FOR EACH ROW
-EXECUTE FUNCTION validar_feedback_entidad();
-
--- =====================================================
--- Función: limpiar_feedback_huerfano
--- =====================================================
--- Limpia automáticamente el feedback asociado a una entidad
--- cuando se elimina la entidad. Evita datos huérfanos.
--- =====================================================
-
-CREATE OR REPLACE FUNCTION limpiar_feedback_huerfano()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Eliminar el feedback que coincide con la entidad que se está borrando
-  -- El tipo de entidad se pasa como argumento del trigger (TG_ARGV[0])
-  -- SECURITY DEFINER permite que la función se ejecute con los privilegios
-  -- del propietario, evitando restricciones de RLS al eliminar feedback
-  DELETE FROM feedback 
-  WHERE tipo_entidad = TG_ARGV[0]::tipo_feedback 
-    AND entidad_id = OLD.id;
-  
-  RETURN OLD;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- =====================================================
--- Triggers para limpiar feedback huérfano
--- =====================================================
--- Estos triggers se ejecutan ANTES de eliminar una entidad
--- y limpian automáticamente el feedback asociado.
--- =====================================================
-
--- Trigger para limpiar feedback cuando se elimina un curso
-CREATE TRIGGER trigger_limpiar_feedback_en_curso
-BEFORE DELETE ON curso
-FOR EACH ROW
-EXECUTE FUNCTION limpiar_feedback_huerfano('CURSO');
-
--- Trigger para limpiar feedback cuando se elimina un módulo
-CREATE TRIGGER trigger_limpiar_feedback_en_modulo
-BEFORE DELETE ON modulo
-FOR EACH ROW
-EXECUTE FUNCTION limpiar_feedback_huerfano('MODULO');
-
--- Trigger para limpiar feedback cuando se elimina una tarea
-CREATE TRIGGER trigger_limpiar_feedback_en_tarea
-BEFORE DELETE ON tarea
-FOR EACH ROW
-EXECUTE FUNCTION limpiar_feedback_huerfano('TAREA');
-
--- Trigger para limpiar feedback cuando se elimina un quiz
-CREATE TRIGGER trigger_limpiar_feedback_en_quiz
-BEFORE DELETE ON quiz
-FOR EACH ROW
-EXECUTE FUNCTION limpiar_feedback_huerfano('QUIZ');
-
--- =====================================================
 -- Función: validar_transicion_estado_inscripcion
 -- =====================================================
 -- Valida que las transiciones de estado en inscripciones
@@ -293,13 +361,12 @@ FOR EACH ROW
 WHEN (OLD.estado IS DISTINCT FROM NEW.estado)
 EXECUTE FUNCTION validar_transicion_estado_inscripcion();
 
-
 -- =====================================================
 -- Función: validar_acreditacion_curso
 -- =====================================================
 -- Valida que una inscripción solo se pueda acreditar si
--- existe al menos un intento aprobado que cumpla el score
--- mínimo según las reglas de acreditación activas.
+-- existe al menos un intento aprobado del examen final
+-- que cumpla el score mínimo según las reglas de acreditación activas.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION validar_acreditacion_curso()
@@ -310,12 +377,15 @@ DECLARE
 BEGIN
   -- Solo validar si se está marcando como acreditado
   IF NEW.acreditado = TRUE AND (TG_OP = 'INSERT' OR OLD.acreditado = FALSE) THEN
-    -- Obtener min_score de regla de acreditación activa
+    -- Obtener min_score de regla de acreditación activa (prioridad: examen final > general)
     SELECT ra.min_score_aprobatorio INTO min_score
     FROM regla_acreditacion ra
     WHERE ra.curso_id = NEW.curso_id
       AND ra.activa = TRUE
-    ORDER BY CASE WHEN ra.quiz_id IS NOT NULL THEN 1 ELSE 2 END
+    ORDER BY 
+      CASE WHEN ra.examen_final_id IS NOT NULL THEN 1 
+           WHEN ra.quiz_id IS NOT NULL THEN 2 
+           ELSE 3 END
     LIMIT 1;
     
     -- Si no hay regla, usar default
@@ -323,19 +393,20 @@ BEGIN
       min_score := 80.00;
     END IF;
     
-    -- Verificar que existe al menos un intento aprobado que cumpla el score mínimo
+    -- Verificar que existe al menos un intento aprobado del examen final que cumpla el score mínimo
     SELECT EXISTS (
       SELECT 1 
       FROM intento i
-      JOIN quiz q ON q.id = i.quiz_id
+      JOIN examen_final ef ON ef.id = i.examen_final_id
       WHERE i.inscripcion_curso_id = NEW.id
         AND i.resultado = 'APROBADO'
         AND i.puntaje >= min_score
+        AND ef.curso_id = NEW.curso_id
       LIMIT 1
     ) INTO intento_aprobado;
     
     IF NOT intento_aprobado THEN
-      RAISE EXCEPTION 'No se puede acreditar la inscripción. No existe un intento aprobado que cumpla el score mínimo de %. Score mínimo requerido: %', min_score, min_score;
+      RAISE EXCEPTION 'No se puede acreditar la inscripción. No existe un intento aprobado del examen final que cumpla el score mínimo de %. Score mínimo requerido: %', min_score, min_score;
     END IF;
     
     -- Si se acredita y acreditado_en es NULL, establecer la fecha
@@ -365,14 +436,13 @@ $$ LANGUAGE plpgsql;
 -- Trigger: trg_validar_acreditacion_curso
 -- =====================================================
 -- Valida que la acreditación solo se permita cuando se
--- cumplan los requisitos de intentos aprobados.
+-- cumplan los requisitos de intentos aprobados del examen final.
 -- =====================================================
 
 CREATE TRIGGER trg_validar_acreditacion_curso
 BEFORE INSERT OR UPDATE ON inscripcion_curso
 FOR EACH ROW
 EXECUTE FUNCTION validar_acreditacion_curso();
-
 
 -- =====================================================
 -- Función: validar_foro_comentario_curso
@@ -415,4 +485,3 @@ CREATE TRIGGER trg_validar_foro_comentario_curso
 BEFORE INSERT OR UPDATE ON foro_comentario
 FOR EACH ROW
 EXECUTE FUNCTION validar_foro_comentario_curso();
-

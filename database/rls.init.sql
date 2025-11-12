@@ -80,11 +80,11 @@ ALTER TABLE guia_estudio ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leccion ENABLE ROW LEVEL SECURITY;
 ALTER TABLE leccion_contenido ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz ENABLE ROW LEVEL SECURITY;
+ALTER TABLE examen_final ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pregunta ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pregunta_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE opcion ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tarea ENABLE ROW LEVEL SECURITY;
-ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE entrega ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inscripcion_curso ENABLE ROW LEVEL SECURITY;
 ALTER TABLE intento ENABLE ROW LEVEL SECURITY;
@@ -160,7 +160,7 @@ WITH CHECK (is_admin());
 -- Políticas para tabla leccion
 -- =====================================================
 
--- Todos pueden ver lecciones públicas de cursos públicos
+-- Todos pueden ver lecciones públicas de módulos y cursos públicos
 CREATE POLICY leccion_select_public ON leccion
 FOR SELECT
 USING (
@@ -187,21 +187,50 @@ WITH CHECK (is_admin());
 -- Políticas para tabla quiz
 -- =====================================================
 
--- Todos pueden ver quizzes públicos de cursos públicos
+-- Todos pueden ver quizzes públicos de lecciones, módulos y cursos públicos
 CREATE POLICY quiz_select_public ON quiz
 FOR SELECT
 USING (
   publicado = TRUE 
   AND EXISTS (
-    SELECT 1 FROM curso c 
-    WHERE c.id = quiz.curso_id 
+    SELECT 1 
+    FROM leccion l
+    JOIN modulo m ON m.id = l.modulo_id
+    JOIN modulo_curso mc ON mc.modulo_id = m.id
+    JOIN curso c ON c.id = mc.curso_id
+    WHERE l.id = quiz.leccion_id
     AND c.publicado = TRUE
+    AND m.publicado = TRUE
+    AND l.publicado = TRUE
   )
   OR is_admin()
 );
 
 -- Los administradores pueden hacer todo en quizzes
 CREATE POLICY quiz_all_admin ON quiz
+FOR ALL
+USING (is_admin())
+WITH CHECK (is_admin());
+
+-- =====================================================
+-- Políticas para tabla examen_final
+-- =====================================================
+
+-- Todos pueden ver exámenes finales públicos de cursos públicos
+CREATE POLICY examen_final_select_public ON examen_final
+FOR SELECT
+USING (
+  publicado = TRUE 
+  AND EXISTS (
+    SELECT 1 FROM curso c 
+    WHERE c.id = examen_final.curso_id 
+    AND c.publicado = TRUE
+  )
+  OR is_admin()
+);
+
+-- Los administradores pueden hacer todo en exámenes finales
+CREATE POLICY examen_final_all_admin ON examen_final
 FOR ALL
 USING (is_admin())
 WITH CHECK (is_admin());
@@ -303,46 +332,6 @@ WITH CHECK (usuario_id = get_current_user_id() OR is_admin());
 
 -- Los administradores pueden hacer todo en entregas
 CREATE POLICY entrega_all_admin ON entrega
-FOR ALL
-USING (is_admin())
-WITH CHECK (is_admin());
-
--- =====================================================
--- Políticas para tabla feedback
--- =====================================================
-
--- Los usuarios pueden ver feedback público y su propio feedback
-CREATE POLICY feedback_select_own_public ON feedback
-FOR SELECT
-USING (
-  usuario_id = get_current_user_id() 
-  OR autor_id = get_current_user_id()
-  OR visibilidad = 'PUBLICO'
-  OR (
-    visibilidad = 'CURSO' 
-    AND tipo_entidad = 'CURSO'
-    AND EXISTS (
-      SELECT 1 FROM inscripcion_curso ic
-      WHERE ic.curso_id = feedback.entidad_id
-      AND ic.usuario_id = get_current_user_id()
-    )
-  )
-  OR is_admin()
-);
-
--- Los usuarios pueden insertar su propio feedback
-CREATE POLICY feedback_insert_own ON feedback
-FOR INSERT
-WITH CHECK (usuario_id = get_current_user_id() OR is_admin());
-
--- Los usuarios pueden actualizar su propio feedback
-CREATE POLICY feedback_update_own ON feedback
-FOR UPDATE
-USING (usuario_id = get_current_user_id() OR is_admin())
-WITH CHECK (usuario_id = get_current_user_id() OR is_admin());
-
--- Los administradores pueden hacer todo en feedback
-CREATE POLICY feedback_all_admin ON feedback
 FOR ALL
 USING (is_admin())
 WITH CHECK (is_admin());
