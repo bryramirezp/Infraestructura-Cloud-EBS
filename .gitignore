@@ -55,3 +55,4 @@ yarn.lock
 # Other
 *.tgz
 *.tar.gz
+.env
