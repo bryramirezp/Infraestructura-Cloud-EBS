@@ -3,6 +3,9 @@
  * Seguimiento del avance del alumno en cursos y módulos
  */
 
+import type { EstadoInscripcion } from '@/entities/enrollment';
+import type { Respuesta } from '@/entities/attempt';
+
 export type ProgressStatus = 'no_iniciado' | 'en_progreso' | 'completado' | 'abandonado';
 
 /**
@@ -88,4 +91,27 @@ export interface StudentProgressSummary {
   averageGrade: number;
   certificatesEarned: number;
   lastActivityDate?: string;
+}
+
+/**
+ * Vista: Inscripción de Módulo Calculada
+ * Calcula el progreso del módulo basándose en las inscripciones de materias (cursos)
+ */
+export interface InscripcionModuloCalculada {
+  usuario_id: string;
+  modulo_id: string;
+  estado: EstadoInscripcion;
+  acreditado: boolean;
+  acreditado_en: string | null;
+  fecha_inscripcion: string;
+  fecha_conclusion: string | null;
+}
+
+/**
+ * Vista: Respuesta con Evaluación
+ * Calcula dinámicamente es_correcta y puntos_otorgados
+ */
+export interface RespuestaConEvaluacion extends Respuesta {
+  es_correcta: boolean | null;
+  puntos_otorgados: number | null;
 }

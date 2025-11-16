@@ -95,8 +95,8 @@ EXECUTE FUNCTION validar_max_intentos();
 -- Función: validar_intento_inscripcion
 -- =====================================================
 -- Valida que el usuario_id coincida con la inscripción
--- y que el quiz pertenezca a la lección del curso de la
--- inscripción, o que el examen final pertenezca al curso.
+-- y que el quiz pertenezca a la lección de la materia (curso)
+-- de la inscripción, o que el examen final pertenezca a la materia.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION validar_intento_inscripcion()
@@ -111,7 +111,7 @@ BEGIN
     RAISE EXCEPTION 'El usuario no coincide con la inscripción';
   END IF;
   
-  -- Validar quiz: debe pertenecer a una lección del curso de la inscripción
+  -- Validar quiz: debe pertenecer a una lección de la materia (curso) de la inscripción
   IF NEW.quiz_id IS NOT NULL THEN
     IF NOT EXISTS (
       SELECT 1 
@@ -124,11 +124,11 @@ BEGIN
       WHERE ic.id = NEW.inscripcion_curso_id
         AND q.id = NEW.quiz_id
     ) THEN
-      RAISE EXCEPTION 'El quiz no pertenece a una lección del curso de la inscripción';
+      RAISE EXCEPTION 'El quiz no pertenece a una lección de la materia de la inscripción';
     END IF;
   END IF;
   
-  -- Validar examen final: debe pertenecer al curso de la inscripción
+  -- Validar examen final: debe pertenecer a la materia (curso) de la inscripción
   IF NEW.examen_final_id IS NOT NULL THEN
     IF NOT EXISTS (
       SELECT 1 
@@ -137,7 +137,7 @@ BEGIN
       WHERE ic.id = NEW.inscripcion_curso_id
         AND ef.id = NEW.examen_final_id
     ) THEN
-      RAISE EXCEPTION 'El examen final no pertenece al curso de la inscripción';
+      RAISE EXCEPTION 'El examen final no pertenece a la materia de la inscripción';
     END IF;
   END IF;
   
@@ -159,7 +159,7 @@ EXECUTE FUNCTION validar_intento_inscripcion();
 -- =====================================================
 -- Función: validar_examen_final_prerequisitos
 -- =====================================================
--- Valida que todos los quizzes de las lecciones del curso
+-- Valida que todos los quizzes de las lecciones de la materia (curso)
 -- estén completados antes de permitir el examen final.
 -- =====================================================
 
@@ -179,7 +179,7 @@ BEGIN
   FROM examen_final
   WHERE id = NEW.examen_final_id;
   
-  -- Contar quizzes de lecciones del curso que no tienen intentos aprobados
+  -- Contar quizzes de lecciones de la materia que no tienen intentos aprobados
   SELECT COUNT(*) INTO quizzes_pendientes
   FROM leccion l
   JOIN modulo_curso mc ON mc.modulo_id = l.modulo_id
@@ -195,7 +195,7 @@ BEGIN
     );
   
   IF quizzes_pendientes > 0 THEN
-    RAISE EXCEPTION 'No se puede realizar el examen final. Faltan % quiz(es) por completar y aprobar', quizzes_pendientes;
+    RAISE EXCEPTION 'No se puede realizar el examen final. Faltan % quiz(es) por completar y aprobar de las lecciones de la materia', quizzes_pendientes;
   END IF;
   
   RETURN NEW;
@@ -364,8 +364,8 @@ EXECUTE FUNCTION validar_transicion_estado_inscripcion();
 -- =====================================================
 -- Función: validar_acreditacion_curso
 -- =====================================================
--- Valida que una inscripción solo se pueda acreditar si
--- existe al menos un intento aprobado del examen final
+-- Valida que una inscripción a una materia (curso) solo se pueda
+-- acreditar si existe al menos un intento aprobado del examen final
 -- que cumpla el score mínimo según las reglas de acreditación activas.
 -- =====================================================
 
@@ -447,8 +447,8 @@ EXECUTE FUNCTION validar_acreditacion_curso();
 -- =====================================================
 -- Función: validar_foro_comentario_curso
 -- =====================================================
--- Valida que el curso_id en foro_comentario coincida
--- con el curso del módulo de la lección.
+-- Valida que el curso_id (materia) en foro_comentario coincida
+-- con la materia del módulo de la lección.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION validar_foro_comentario_curso()
@@ -456,7 +456,7 @@ RETURNS TRIGGER AS $$
 DECLARE
   curso_valido BOOLEAN;
 BEGIN
-  -- Validar que el curso_id esté en la lista de cursos del módulo de la lección
+  -- Validar que el curso_id (materia) esté en la lista de materias del módulo de la lección
   SELECT EXISTS (
     SELECT 1
     FROM leccion l
@@ -465,9 +465,9 @@ BEGIN
     AND mc.curso_id = NEW.curso_id
   ) INTO curso_valido;
   
-  -- Validar que el curso_id coincida con uno de los cursos del módulo
+  -- Validar que el curso_id coincida con una de las materias del módulo
   IF NOT curso_valido THEN
-    RAISE EXCEPTION 'El curso_id del comentario (%) no coincide con ninguno de los cursos del módulo de la lección', NEW.curso_id;
+    RAISE EXCEPTION 'El curso_id (materia) del comentario (%) no coincide con ninguna de las materias del módulo de la lección', NEW.curso_id;
   END IF;
   
   RETURN NEW;

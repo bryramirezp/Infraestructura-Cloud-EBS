@@ -1,8 +1,8 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:15-alpine
+    build:
+      context: ./database
+      dockerfile: Dockerfile
     container_name: ebs_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ebs_user}
@@ -10,11 +10,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ebs_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ebs_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ebs_user} -d ${POSTGRES_DB:-ebs_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,13 +38,15 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PYTHONPATH: /app
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend/app:/app
+    # Comenta el volumen si no estás en desarrollo activo
+    # volumes:
+    #   - ./backend/app:/app/app:rw
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

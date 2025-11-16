@@ -9,7 +9,7 @@ La estructura jerárquica del sistema es:
 - **Módulo:** Contenedor principal que agrupa materias. Define el período académico (puede durar lo que determine la escuela).
   - Tiene `fecha_inicio` y `fecha_fin` que controlan cuándo el contenido está disponible
   - Cuando el coordinador activa/publica el módulo, **todas las lecciones** se muestran automáticamente
-- **Materia (Curso):** Cada módulo tiene N materias (ej. "Jesús 1", "Biblia 1"). Cada materia tiene:
+- **Materia:** Cada módulo tiene N materias (ej. "Jesús 1", "Biblia 1"). Cada materia tiene:
   - N lecciones (ej. "Introducción a Jesús", "Muerte y resurrección de Jesús")
   - Cada lección tiene un quiz (tarea evaluable)
   - Un examen final (solo accesible después de completar todos los quizzes de las lecciones)
@@ -21,8 +21,6 @@ La estructura jerárquica del sistema es:
 - Las lecciones **NO tienen fechas propias** (`fecha_inicio`/`fecha_fin`)
 - Las fechas del módulo controlan cuándo todo el contenido está disponible
 - Al activar el módulo, todas las lecciones se liberan simultáneamente (no hay liberación gradual)
-
-**Nota:** En el esquema de base de datos, la tabla se llama `curso` pero conceptualmente representa una "Materia".
 
 ---
 
@@ -89,7 +87,7 @@ Este grupo define la estructura jerárquica y los materiales de aprendizaje.
 - **Control de disponibilidad:** Cuando el módulo está activo/publicado, **todas las lecciones** de todas las materias del módulo se muestran automáticamente
 - **Sin liberación gradual:** Las lecciones no tienen fechas individuales; se liberan todas al activar el módulo
 
-### **curso** (Materia)
+### **curso**
 
 **Descripción:** Materia dentro de un módulo (ej. "Jesús 1", "Biblia 1"). Cada módulo puede tener múltiples materias.
 
@@ -105,7 +103,7 @@ Este grupo define la estructura jerárquica y los materiales de aprendizaje.
 
 ### **modulo_curso**
 
-**Descripción:** Tabla pivote (muchos a muchos) que vincula módulos con materias (cursos).
+**Descripción:** Tabla pivote (muchos a muchos) que vincula módulos con materias.
 
 **Función en el sistema:**
 - Permite que un módulo tenga múltiples materias (ej. un módulo puede tener "Jesús 1" y "Biblia 1")
@@ -243,39 +241,6 @@ Este grupo maneja cómo se evalúa a los estudiantes.
 - **Validación:** El sistema debe validar que todos los quizzes de las lecciones de la materia estén completados antes de permitir el intento
 - **Jerarquía:** Módulo → Materia → Examen Final
 - **Vinculación:** Vinculado a `curso_id` (materia)
-
-### **tarea**
-
-**Descripción:** Tabla para asignaciones adicionales opcionales (ej. "Subir ensayo") vinculadas a una materia (curso).
-
-**Nota importante:** En el modelo de negocio, las **tareas evaluables principales son los quizzes** que están vinculados a las lecciones. Esta tabla `tarea` se reserva para asignaciones especiales o trabajos adicionales que no sean quizzes de lecciones.
-
-**Función en el sistema:**
-- Actividad evaluable opcional a nivel de materia
-- Para trabajos/ensayos adicionales que no sean los quizzes de lecciones
-- `publicado`: Controla visibilidad
-
-**Lógica Clave:**
-- **RLS:** Tareas publicadas son visibles si la materia también está publicada
-- **CASCADE:** Si se elimina una materia (curso), se eliminan sus tareas
-- **Uso:** Las tareas evaluables principales del sistema son los **quizzes vinculados a lecciones**
-
-### **entrega**
-
-**Descripción:** Registro de la entrega de un usuario para una tarea.
-
-**Función en el sistema:**
-- Almacena el estado: PENDIENTE, ENTREGADA, CALIFICADA
-- `calificacion`: Puntuación numérica (NUMERIC(5,2))
-- `entregado_en`, `calificado_en`: Timestamps de eventos
-- `permitir_nuevo_intento`: Campo booleano controlado por el instructor para permitir un nuevo intento
-
-**Lógica Clave:**
-- **RLS:** Usuarios solo pueden ver y gestionar sus propias entregas
-- **Múltiples entregas:** Un usuario puede tener múltiples entregas por tarea (se eliminó la restricción UNIQUE)
-- **Control manual:** El instructor debe establecer `permitir_nuevo_intento = TRUE` para que el usuario pueda crear una nueva entrega
-- **DEFAULT:** Estado inicial es 'PENDIENTE', `permitir_nuevo_intento` inicialmente FALSE
-- **Reapertura:** Cada entrega tiene su propio registro; el instructor controla manualmente cuándo permitir nuevos intentos
 
 ---
 
@@ -446,12 +411,12 @@ Este grupo no almacena datos, sino que los calcula o acelera.
 
 #### **inscripcion_modulo_calculada**
 
-**Descripción:** Calcula el progreso del módulo basándose en inscripciones de curso.
+**Descripción:** Calcula el progreso del módulo basándose en inscripciones de materias (cursos).
 
 **Función:**
 - Reemplaza la tabla `inscripcion_modulo` (eliminada)
 - Calcula dinámicamente: estado, acreditado, fechas
-- El progreso se deriva del progreso en los cursos que componen el módulo
+- El progreso se deriva del progreso en las materias que componen el módulo
 
 **Uso:**
 ```sql
@@ -565,7 +530,6 @@ SELECT * FROM quiz_con_preguntas WHERE id = '...';
 - `estado_inscripcion`: ACTIVA, PAUSADA, CONCLUIDA, REPROBADA
 - `resultado_intento`: APROBADO, NO_APROBADO
 - `tipo_pregunta`: ABIERTA, OPCION_MULTIPLE, VERDADERO_FALSO
-- `estado_entrega`: PENDIENTE, ENTREGADA, CALIFICADA
 
 ### **Convenciones de Nomenclatura**
 
@@ -599,9 +563,9 @@ SELECT * FROM quiz_con_preguntas WHERE id = '...';
    - Manejar excepciones de triggers (ej. nuevo intento no permitido)
 
 3. **Múltiples intentos:**
-   - Los usuarios pueden tener múltiples intentos/entregas por quiz/tarea
+   - Los usuarios pueden tener múltiples intentos por quiz
    - El instructor debe establecer `permitir_nuevo_intento = TRUE` para permitir un nuevo intento
-   - Cada intento/entrega tiene su propio registro independiente
+   - Cada intento tiene su propio registro independiente
 
 4. **Búsquedas de texto:**
    - Usar operador `%` con índices GIN: `WHERE titulo % 'palabra clave'`
@@ -625,16 +589,16 @@ SELECT * FROM quiz_con_preguntas WHERE id = '...';
    - Cada lección tiene un quiz (tarea evaluable)
    - Cada materia tiene un examen final
 
-5. **Múltiples intentos:**
-   - Los usuarios pueden tener múltiples intentos en quizzes y múltiples entregas en tareas
+4. **Múltiples intentos:**
+   - Los usuarios pueden tener múltiples intentos en quizzes
    - El instructor controla manualmente cuándo permitir nuevos intentos estableciendo `permitir_nuevo_intento = TRUE`
-   - Cada intento/entrega es un registro independiente con su propia calificación
+   - Cada intento es un registro independiente con su propia calificación
 
-6. **Acceso al examen final:**
+5. **Acceso al examen final:**
    - El alumno solo puede acceder al examen final si completó todos los quizzes de todas las lecciones de la materia
    - El sistema valida automáticamente este prerequisito antes de permitir el intento
 
-7. **Disponibilidad de lecciones:**
+6. **Disponibilidad de lecciones:**
    - Las lecciones NO tienen fechas individuales
    - Cuando el coordinador activa/publica un módulo, todas las lecciones se muestran automáticamente
    - Las fechas `fecha_inicio` y `fecha_fin` del módulo controlan el período de disponibilidad

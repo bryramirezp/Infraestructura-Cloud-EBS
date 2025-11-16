@@ -15,6 +15,139 @@
 - **Contenedorización**: Docker
 - **Despliegue**: AWS ECS Fargate
 
+## System Prompt: Ingeniero Frontend Senior
+
+Eres un **ingeniero frontend senior experto** especializado en el siguiente stack tecnológico:
+
+### Stack Tecnológico
+
+- **Framework**: React 18 + TypeScript
+- **Build**: Vite 7.1.9 (con SWC)
+- **Estilos**: Tailwind CSS 3.4.1
+- **Estado**: TanStack React Query 5.83.0
+- **Routing**: React Router DOM 6.30.1
+- **Auth**: Amazon Cognito Identity JS 6.3.15 (directo, sin Amplify)
+- **HTTP**: Fetch API nativo
+- **Validación**: Zod 3.23.8
+- **Formularios**: React Hook Form 7.53.0
+- **UI**: Radix UI primitives
+- **Notificaciones**: Sonner 1.7.4
+- **Mocking**: MSW (opcional)
+
+### Principios de Desarrollo
+
+1. **Type Safety First**
+   - Usar TypeScript estricto con tipos explícitos
+   - Tipos alineados con la estructura de la base de datos (UUIDs, enums, relaciones)
+   - Validación con Zod para runtime type checking
+   - Evitar `any` y `unknown` sin justificación
+
+2. **Arquitectura Feature-Sliced Design (FSD)**
+   - Estructura por entidades: `src/entities/{entity}/`
+   - Separación clara: `model/`, `api/`, `ui/`, `lib/`
+   - Shared layer para código reutilizable
+   - Widgets para componentes compuestos
+
+3. **React Query Best Practices**
+   - Usar `useQuery` para datos de lectura
+   - Usar `useMutation` para operaciones de escritura
+   - Invalidar queries relacionadas después de mutaciones
+   - Implementar optimistic updates cuando sea apropiado
+   - Manejar estados de loading, error y success
+
+4. **Fetch API Nativo**
+   - No usar librerías HTTP adicionales (Axios, etc.)
+   - Centralizar lógica de requests en `api-client.ts`
+   - Manejo consistente de errores y headers
+   - Integración automática con Cognito para tokens
+
+5. **Cognito Directo (Sin Amplify)**
+   - Usar `amazon-cognito-identity-js` directamente
+   - Funciones centralizadas en `shared/aws/cognito.ts`
+   - Obtener tokens antes de cada request
+   - Manejar renovación de tokens automáticamente
+
+6. **Formularios con React Hook Form + Zod**
+   - Validación con Zod schemas
+   - Integración con `@hookform/resolvers`
+   - Manejo de errores de validación
+   - Optimización de re-renders
+
+7. **UI Components con Radix UI**
+   - Usar primitives de Radix UI
+   - Composición sobre configuración
+   - Accesibilidad built-in
+   - Customización con Tailwind CSS
+
+8. **Tailwind CSS**
+   - Utility-first approach
+   - Componentes reutilizables con `@apply` cuando sea necesario
+   - Responsive design mobile-first
+   - Dark mode support cuando aplique
+
+9. **Código Limpio**
+   - Componentes pequeños y enfocados
+   - Hooks personalizados para lógica reutilizable
+   - Separación de concerns (UI, lógica, datos)
+   - Nombres descriptivos y consistentes
+
+10. **Performance**
+    - Lazy loading de rutas y componentes pesados
+    - Code splitting por feature
+    - Memoización cuando sea necesario (`useMemo`, `useCallback`)
+    - Optimistic updates para mejor UX
+
+11. **Testing (cuando aplique)**
+    - Unit tests para hooks y utilidades
+    - Integration tests para flujos críticos
+    - E2E tests para flujos completos
+
+12. **Alineación con Base de Datos**
+    - Tipos TypeScript reflejan exactamente la estructura de la DB
+    - Respetar reglas de negocio definidas en triggers
+    - Validar prerrequisitos antes de operaciones
+    - Manejar estados de entidades correctamente
+
+### Convenciones de Código
+
+- **Nombres de archivos**: kebab-case (`use-module.ts`, `module-card.tsx`)
+- **Nombres de componentes**: PascalCase (`ModuleCard`, `QuizPage`)
+- **Nombres de hooks**: camelCase con prefijo `use` (`useModulo`, `useInscribirEnCurso`)
+- **Nombres de tipos/interfaces**: PascalCase (`Modulo`, `InscripcionCurso`)
+- **Nombres de constantes**: UPPER_SNAKE_CASE (`API_ENDPOINTS`, `ESTADO_INSCRIPCION`)
+
+### Estructura de Archivos Recomendada
+
+```
+src/
+├── entities/           # Entidades de dominio
+│   └── {entity}/
+│       ├── model/     # Types, schemas, interfaces
+│       ├── api/       # Hooks de React Query
+│       ├── ui/        # Componentes de la entidad
+│       └── lib/        # Utilidades específicas
+├── features/          # Features complejas
+├── widgets/           # Componentes compuestos
+├── pages/             # Páginas/rutas
+├── shared/            # Código compartido
+│   ├── api/          # API client, endpoints
+│   ├── aws/           # Cognito integration
+│   ├── ui/            # Componentes UI base
+│   ├── hooks/         # Hooks reutilizables
+│   └── lib/           # Utilidades generales
+└── app/               # Configuración de la app
+```
+
+### Prioridades
+
+1. **Type Safety**: Nunca comprometer la seguridad de tipos
+2. **User Experience**: UX fluida y responsiva
+3. **Performance**: Carga rápida y operaciones eficientes
+4. **Mantenibilidad**: Código claro y bien organizado
+5. **Alineación con DB**: Respetar estructura y reglas de la base de datos
+
+---
+
 ## Estado Actual de la Implementación
 
 ### ✅ Migración de AWS Amplify a Cognito Directo - COMPLETADO
@@ -73,7 +206,1087 @@ La migración de AWS Amplify a uso directo de Amazon Cognito Identity JS ha sido
 
 ---
 
-## Fase 0: Configuración y Definición del Contrato (API-First)
+## Plan de Desarrollo Frontend - Alineado con Base de Datos
+
+### Análisis de la Estructura de Base de Datos
+
+**Nota Importante:** La tabla `curso` en la base de datos representa conceptualmente una "Materia" en el modelo de negocio. La jerarquía es: Módulo → Materia (curso) → Lección → Quiz.
+
+**Jerarquía de Contenido:**
+```
+Módulo (fecha_inicio DATE, fecha_fin DATE, publicado BOOLEAN)
+  └── modulo_curso (relación muchos a muchos con slot INT)
+      └── Curso/Materia (titulo, descripcion TEXT, publicado BOOLEAN)
+          ├── Examen_Final (aleatorio BOOLEAN, guarda_calificacion BOOLEAN)
+          ├── Guia_Estudio (titulo, url VARCHAR(500), activo BOOLEAN)
+          └── (a través de módulo)
+              └── Lección (titulo, orden INT, publicado BOOLEAN)
+                  ├── Lección_Contenido (tipo tipo_contenido ENUM: TEXTO, PDF, VIDEO, LINK)
+                  └── Quiz (aleatorio BOOLEAN, guarda_calificacion BOOLEAN)
+                      └── Pregunta
+                          ├── Pregunta_Config (tipo tipo_pregunta ENUM: ABIERTA, OPCION_MULTIPLE, VERDADERO_FALSO)
+                          └── Opción (texto VARCHAR(500), es_correcta BOOLEAN, orden INT)
+```
+
+**Entidades de Usuario y Acceso:**
+- `usuario` (id UUID, nombre VARCHAR(120), apellido VARCHAR(120), email VARCHAR(190) UNIQUE, avatar_url VARCHAR(500), cognito_user_id VARCHAR(255) UNIQUE)
+- `rol` (id UUID, nombre VARCHAR(50) UNIQUE)
+- `usuario_rol` (id UUID, usuario_id UUID, rol_id UUID, asignado_en TIMESTAMPTZ)
+
+**Entidades de Inscripción y Progreso:**
+- `inscripcion_curso` (id UUID, usuario_id UUID, curso_id UUID, estado estado_inscripcion ENUM: ACTIVA, PAUSADA, CONCLUIDA, REPROBADA, acreditado BOOLEAN, acreditado_en TIMESTAMPTZ, fecha_inscripcion DATE, fecha_conclusion DATE)
+- `intento` (id UUID, usuario_id UUID, quiz_id UUID | examen_final_id UUID, inscripcion_curso_id UUID, numero_intento INT, puntaje NUMERIC(5,2), resultado resultado_intento ENUM: APROBADO, NO_APROBADO, iniciado_en TIMESTAMPTZ, finalizado_en TIMESTAMPTZ, permitir_nuevo_intento BOOLEAN)
+- `intento_pregunta` (id UUID, intento_id UUID, pregunta_id UUID, puntos_maximos INT, orden INT)
+- `respuesta` (id UUID, intento_pregunta_id UUID, respuesta_texto TEXT, opcion_id UUID, respuesta_bool BOOLEAN)
+
+**Entidades de Acreditación y Certificación:**
+- `regla_acreditacion` (id UUID, curso_id UUID, quiz_id UUID | examen_final_id UUID | NULL, min_score_aprobatorio NUMERIC(5,2) DEFAULT 80.00, max_intentos_quiz INT DEFAULT 3, bloquea_curso_por_reprobacion_quiz BOOLEAN DEFAULT TRUE, activa BOOLEAN DEFAULT TRUE)
+- `certificado` (id UUID, inscripcion_curso_id UUID, quiz_id UUID | examen_final_id UUID | NULL, intento_id UUID | NULL, folio VARCHAR(50), hash_verificacion VARCHAR(128) UNIQUE, s3_key VARCHAR(500), emitido_en TIMESTAMPTZ, valido BOOLEAN DEFAULT TRUE)
+
+**Entidades de Interacción:**
+- `foro_comentario` (id UUID, usuario_id UUID, curso_id UUID, leccion_id UUID, contenido TEXT)
+- `preferencia_notificacion` (id UUID, usuario_id UUID UNIQUE, email_recordatorios BOOLEAN, email_motivacion BOOLEAN, email_resultados BOOLEAN)
+
+**Vistas de Base de Datos:**
+- `inscripcion_modulo_calculada`: Calcula el progreso del módulo basándose en las inscripciones de materias (cursos). El estado se deriva de las inscripciones: REPROBADA > CONCLUIDA > PAUSADA > ACTIVA.
+- `respuesta_con_evaluacion`: Calcula dinámicamente `es_correcta` y `puntos_otorgados` basándose en el tipo de pregunta y la configuración.
+- `quiz_con_preguntas`: Vista que incluye el número de preguntas por quiz.
+- `examen_final_con_preguntas`: Vista que incluye el número de preguntas por examen final.
+
+**Tipos ENUM de Base de Datos:**
+- `estado_publicacion`: 'PUBLICADO', 'NO_PUBLICADO' (definido pero no usado directamente en tablas, se usa BOOLEAN)
+- `tipo_contenido`: 'TEXTO', 'PDF', 'VIDEO', 'LINK'
+- `estado_inscripcion`: 'ACTIVA', 'PAUSADA', 'CONCLUIDA', 'REPROBADA'
+- `resultado_intento`: 'APROBADO', 'NO_APROBADO'
+- `tipo_pregunta`: 'ABIERTA', 'OPCION_MULTIPLE', 'VERDADERO_FALSO'
+
+**Reglas de Negocio (Triggers):**
+
+1. **Validación de Máximo de Intentos** (`trg_validar_max_intentos`):
+   - Valida que un usuario no exceda el máximo de intentos permitidos (default: 3, configurable por `regla_acreditacion`)
+   - Se ejecuta antes de INSERT en `intento`
+   - Prioridad: regla específica (quiz_id o examen_final_id) > regla general (curso_id)
+
+2. **Validación de Intento-Inscripción** (`trg_validar_intento_inscripcion`):
+   - Valida que el `usuario_id` coincida con la inscripción
+   - Valida que el quiz pertenezca a una lección de la materia (curso) de la inscripción
+   - Valida que el examen final pertenezca a la materia de la inscripción
+
+3. **Validación de Prerrequisitos de Examen Final** (`trg_validar_examen_final_prerequisitos`):
+   - Valida que todos los quizzes de las lecciones de la materia estén completados y aprobados
+   - Se ejecuta antes de INSERT en `intento` cuando `examen_final_id IS NOT NULL`
+   - Bloquea el examen final si hay quizzes pendientes
+
+4. **Validación de Nuevo Intento Permitido** (`trg_validar_nuevo_intento_permitido`):
+   - Valida que `permitir_nuevo_intento = TRUE` en el último intento antes de crear uno nuevo
+   - No aplica para el primer intento
+   - El instructor controla nuevos intentos mediante `permitir_nuevo_intento`
+
+5. **Validación de Tipo de Respuesta** (`trg_validar_respuesta_tipo`):
+   - Valida que la respuesta coincida con el tipo de pregunta:
+     - `ABIERTA`: requiere `respuesta_texto`
+     - `OPCION_MULTIPLE`: requiere `opcion_id`
+     - `VERDADERO_FALSO`: requiere `respuesta_bool`
+
+6. **Validación de Transición de Estado de Inscripción** (`trg_validar_transicion_estado_inscripcion_curso`):
+   - Una inscripción `CONCLUIDA` no puede cambiar de estado
+   - Una inscripción `REPROBADA` solo puede mantenerse o concluirse
+   - Si se concluye o reproba, actualiza `fecha_conclusion` si es NULL
+
+7. **Validación de Acreditación** (`trg_validar_acreditacion_curso`):
+   - Valida que existe al menos un intento aprobado del examen final que cumpla el score mínimo (default: 80.00, configurable por `regla_acreditacion`)
+   - Si se acredita, establece `acreditado_en` y cambia el estado a `CONCLUIDA`
+   - Prioridad de reglas: examen final específico > quiz específico > general
+
+8. **Validación de Foro Comentario** (`trg_validar_foro_comentario_curso`):
+   - Valida que el `curso_id` (materia) coincida con una de las materias del módulo de la lección
+
+---
+
+## ✅ Fase 1: Definición de Tipos TypeScript (Alineados con DB)
+
+### 1.1 Tipos Base de Entidades
+
+**Objetivo:** Crear tipos TypeScript que reflejen exactamente la estructura de la base de datos.
+
+#### `src/entities/module/model/types.ts` - Actualizar
+
+```typescript
+export interface Modulo {
+  id: string; // UUID PRIMARY KEY
+  titulo: string; // VARCHAR(200) NOT NULL
+  fecha_inicio: string; // DATE NOT NULL (formato: YYYY-MM-DD)
+  fecha_fin: string; // DATE NOT NULL (formato: YYYY-MM-DD)
+  publicado: boolean; // BOOLEAN
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP (formato ISO 8601)
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP (formato ISO 8601)
+}
+
+export interface ModuloCurso {
+  id: string; // UUID PRIMARY KEY
+  modulo_id: string; // UUID NOT NULL REFERENCES modulo(id)
+  curso_id: string; // UUID NOT NULL REFERENCES curso(id)
+  slot: number; // INT NOT NULL (UNIQUE con modulo_id)
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/course/model/types.ts` - Actualizar
+
+```typescript
+/**
+ * Nota: La tabla se llama "curso" pero conceptualmente representa una "Materia"
+ * en el modelo de negocio. La jerarquía es: Módulo → Materia (curso) → Lección → Quiz
+ */
+export interface Curso {
+  id: string; // UUID PRIMARY KEY
+  titulo: string; // VARCHAR(200) NOT NULL
+  descripcion: string | null; // TEXT
+  publicado: boolean; // BOOLEAN
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+export interface GuiaEstudio {
+  id: string; // UUID PRIMARY KEY
+  curso_id: string; // UUID NOT NULL REFERENCES curso(id)
+  titulo: string; // VARCHAR(200) NOT NULL
+  url: string | null; // VARCHAR(500)
+  activo: boolean; // BOOLEAN
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/lesson/model/types.ts` - Crear
+
+```typescript
+/**
+ * Tipo de contenido de lección (ENUM en DB: tipo_contenido)
+ * Nota: Las lecciones NO tienen fechas propias. Las fechas del módulo
+ * controlan cuándo el contenido está disponible.
+ */
+export type TipoContenido = 'TEXTO' | 'PDF' | 'VIDEO' | 'LINK';
+
+export interface Leccion {
+  id: string; // UUID PRIMARY KEY
+  modulo_id: string; // UUID NOT NULL REFERENCES modulo(id)
+  titulo: string; // VARCHAR(200) NOT NULL
+  orden: number | null; // INT
+  publicado: boolean; // BOOLEAN
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+export interface LeccionContenido {
+  id: string; // UUID PRIMARY KEY
+  leccion_id: string; // UUID NOT NULL REFERENCES leccion(id)
+  tipo: TipoContenido; // tipo_contenido NOT NULL (ENUM)
+  titulo: string | null; // VARCHAR(200)
+  descripcion: string | null; // TEXT
+  url: string | null; // VARCHAR(500)
+  orden: number | null; // INT
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/quiz/model/types.ts` - Crear
+
+```typescript
+/**
+ * Quiz vinculado a una lección específica.
+ * Los quizzes son las tareas evaluables del sistema.
+ * Jerarquía: Módulo → Materia (curso) → Lección → Quiz
+ */
+export interface Quiz {
+  id: string; // UUID PRIMARY KEY
+  leccion_id: string; // UUID NOT NULL REFERENCES leccion(id)
+  titulo: string; // VARCHAR(200) NOT NULL
+  publicado: boolean; // BOOLEAN
+  aleatorio: boolean; // BOOLEAN
+  guarda_calificacion: boolean; // BOOLEAN
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/exam/model/types.ts` - Crear
+
+```typescript
+/**
+ * Examen final de la materia (curso).
+ * Solo accesible después de completar todos los quizzes de las lecciones.
+ * Jerarquía: Módulo → Materia (curso) → Examen Final
+ */
+export interface ExamenFinal {
+  id: string; // UUID PRIMARY KEY
+  curso_id: string; // UUID NOT NULL REFERENCES curso(id)
+  titulo: string; // VARCHAR(200) NOT NULL
+  publicado: boolean; // BOOLEAN
+  aleatorio: boolean; // BOOLEAN
+  guarda_calificacion: boolean; // BOOLEAN
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/question/model/types.ts` - Crear
+
+```typescript
+/**
+ * Tipos ENUM de la base de datos
+ */
+export type TipoPregunta = 'ABIERTA' | 'OPCION_MULTIPLE' | 'VERDADERO_FALSO';
+export type ResultadoIntento = 'APROBADO' | 'NO_APROBADO';
+
+/**
+ * Pregunta puede pertenecer a un quiz o a un examen final (no ambos)
+ * CONSTRAINT: (quiz_id IS NOT NULL AND examen_final_id IS NULL) OR
+ *             (quiz_id IS NULL AND examen_final_id IS NOT NULL)
+ */
+export interface Pregunta {
+  id: string; // UUID PRIMARY KEY
+  quiz_id: string | null; // UUID REFERENCES quiz(id) | NULL
+  examen_final_id: string | null; // UUID REFERENCES examen_final(id) | NULL
+  enunciado: string; // TEXT NOT NULL
+  puntos: number | null; // INT
+  orden: number | null; // INT
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+/**
+ * Configuración de pregunta según su tipo.
+ * Constraints en DB:
+ * - ABIERTA: requiere abierta_modelo_respuesta IS NOT NULL
+ * - VERDADERO_FALSO: requiere vf_respuesta_correcta IS NOT NULL
+ * - OPCION_MULTIPLE: requiere om_min_selecciones y om_max_selecciones IS NOT NULL
+ * - om_min_selecciones <= om_max_selecciones
+ */
+export interface PreguntaConfig {
+  pregunta_id: string; // UUID PRIMARY KEY REFERENCES pregunta(id)
+  tipo: TipoPregunta; // tipo_pregunta NOT NULL (ENUM)
+  abierta_modelo_respuesta: string | null; // TEXT (requerido si tipo = ABIERTA)
+  om_seleccion_multiple: boolean; // BOOLEAN
+  om_min_selecciones: number | null; // INT (requerido si tipo = OPCION_MULTIPLE)
+  om_max_selecciones: number | null; // INT (requerido si tipo = OPCION_MULTIPLE)
+  vf_respuesta_correcta: boolean | null; // BOOLEAN (requerido si tipo = VERDADERO_FALSO)
+  penaliza_error: boolean; // BOOLEAN
+  puntos_por_opcion: number | null; // INT
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+export interface Opcion {
+  id: string; // UUID PRIMARY KEY
+  pregunta_id: string; // UUID NOT NULL REFERENCES pregunta(id)
+  texto: string; // VARCHAR(500) NOT NULL
+  es_correcta: boolean | null; // BOOLEAN
+  orden: number | null; // INT
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/enrollment/model/types.ts` - Crear
+
+```typescript
+/**
+ * Nota: inscripcion_curso representa inscripción a una "Materia" (curso).
+ * Estado ENUM en DB: estado_inscripcion
+ */
+export type EstadoInscripcion = 'ACTIVA' | 'PAUSADA' | 'CONCLUIDA' | 'REPROBADA';
+
+export interface InscripcionCurso {
+  id: string; // UUID PRIMARY KEY
+  usuario_id: string; // UUID NOT NULL REFERENCES usuario(id) (UNIQUE con curso_id)
+  curso_id: string; // UUID NOT NULL REFERENCES curso(id)
+  estado: EstadoInscripcion; // estado_inscripcion NOT NULL DEFAULT 'ACTIVA'
+  acreditado: boolean; // BOOLEAN NOT NULL DEFAULT FALSE
+  acreditado_en: string | null; // TIMESTAMPTZ
+  fecha_inscripcion: string; // DATE NOT NULL (formato: YYYY-MM-DD)
+  fecha_conclusion: string | null; // DATE (formato: YYYY-MM-DD)
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/attempt/model/types.ts` - Crear
+
+```typescript
+/**
+ * Intento puede ser de un quiz o de un examen final (no ambos)
+ * CONSTRAINT: (quiz_id IS NOT NULL AND examen_final_id IS NULL) OR
+ *             (quiz_id IS NULL AND examen_final_id IS NOT NULL)
+ * 
+ * Triggers que validan:
+ * - trg_validar_max_intentos: valida máximo de intentos según regla_acreditacion
+ * - trg_validar_intento_inscripcion: valida relaciones usuario-inscripción-quiz/examen
+ * - trg_validar_examen_final_prerequisitos: valida que todos los quizzes estén aprobados
+ * - trg_validar_nuevo_intento_permitido: valida permitir_nuevo_intento = TRUE
+ */
+export interface Intento {
+  id: string; // UUID PRIMARY KEY
+  usuario_id: string; // UUID NOT NULL REFERENCES usuario(id) (NO ACTION on delete)
+  quiz_id: string | null; // UUID REFERENCES quiz(id) | NULL
+  examen_final_id: string | null; // UUID REFERENCES examen_final(id) | NULL
+  inscripcion_curso_id: string; // UUID NOT NULL REFERENCES inscripcion_curso(id)
+  numero_intento: number; // INT NOT NULL
+  puntaje: number | null; // NUMERIC(5,2)
+  resultado: ResultadoIntento | null; // resultado_intento ENUM: APROBADO, NO_APROBADO
+  iniciado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  finalizado_en: string | null; // TIMESTAMPTZ
+  permitir_nuevo_intento: boolean; // BOOLEAN NOT NULL DEFAULT FALSE
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+export interface IntentoPregunta {
+  id: string; // UUID PRIMARY KEY
+  intento_id: string; // UUID NOT NULL REFERENCES intento(id) (UNIQUE con pregunta_id)
+  pregunta_id: string; // UUID NOT NULL REFERENCES pregunta(id)
+  puntos_maximos: number | null; // INT
+  orden: number | null; // INT
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+/**
+ * Respuesta debe coincidir con el tipo de pregunta (validado por trigger):
+ * - ABIERTA: requiere respuesta_texto
+ * - OPCION_MULTIPLE: requiere opcion_id
+ * - VERDADERO_FALSO: requiere respuesta_bool
+ */
+export interface Respuesta {
+  id: string; // UUID PRIMARY KEY
+  intento_pregunta_id: string; // UUID NOT NULL REFERENCES intento_pregunta(id)
+  respuesta_texto: string | null; // TEXT (requerido si tipo = ABIERTA)
+  opcion_id: string | null; // UUID REFERENCES opcion(id) (requerido si tipo = OPCION_MULTIPLE)
+  respuesta_bool: boolean | null; // BOOLEAN (requerido si tipo = VERDADERO_FALSO)
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/certificate/model/types.ts` - Actualizar
+
+```typescript
+/**
+ * Certificado generado automáticamente cuando se acredita una inscripción.
+ * UNIQUE constraint: solo un certificado válido por inscripción_curso_id
+ */
+export interface Certificado {
+  id: string; // UUID PRIMARY KEY
+  inscripcion_curso_id: string; // UUID NOT NULL REFERENCES inscripcion_curso(id)
+  quiz_id: string | null; // UUID REFERENCES quiz(id) (SET NULL on delete)
+  examen_final_id: string | null; // UUID REFERENCES examen_final(id) (SET NULL on delete)
+  intento_id: string | null; // UUID REFERENCES intento(id) (SET NULL on delete)
+  folio: string | null; // VARCHAR(50)
+  hash_verificacion: string | null; // VARCHAR(128) UNIQUE
+  s3_key: string | null; // VARCHAR(500)
+  emitido_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  valido: boolean; // BOOLEAN NOT NULL DEFAULT TRUE
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/user/model/types.ts` - Actualizar
+
+```typescript
+export interface Usuario {
+  id: string; // UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  nombre: string; // VARCHAR(120) NOT NULL
+  apellido: string; // VARCHAR(120) NOT NULL
+  email: string; // VARCHAR(190) UNIQUE NOT NULL
+  avatar_url: string | null; // VARCHAR(500)
+  cognito_user_id: string | null; // VARCHAR(255) UNIQUE
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+export interface Rol {
+  id: string; // UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  nombre: string; // VARCHAR(50) NOT NULL UNIQUE (ej: 'ADMIN', 'ESTUDIANTE', 'INSTRUCTOR')
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+
+export interface UsuarioRol {
+  id: string; // UUID PRIMARY KEY
+  usuario_id: string; // UUID NOT NULL REFERENCES usuario(id) (UNIQUE con rol_id)
+  rol_id: string; // UUID NOT NULL REFERENCES rol(id)
+  asignado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/forum/model/types.ts` - Crear
+
+```typescript
+/**
+ * Comentario del foro asociado a una lección de una materia (curso).
+ * Trigger valida que curso_id coincida con una materia del módulo de la lección.
+ */
+export interface ForoComentario {
+  id: string; // UUID PRIMARY KEY
+  usuario_id: string; // UUID NOT NULL REFERENCES usuario(id)
+  curso_id: string; // UUID NOT NULL REFERENCES curso(id) (validado por trigger)
+  leccion_id: string; // UUID NOT NULL REFERENCES leccion(id)
+  contenido: string; // TEXT NOT NULL
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/notification/model/types.ts` - Crear
+
+```typescript
+export interface PreferenciaNotificacion {
+  id: string; // UUID PRIMARY KEY
+  usuario_id: string; // UUID NOT NULL UNIQUE REFERENCES usuario(id)
+  email_recordatorios: boolean | null; // BOOLEAN
+  email_motivacion: boolean | null; // BOOLEAN
+  email_resultados: boolean | null; // BOOLEAN
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+#### `src/entities/accreditation/model/types.ts` - Crear
+
+```typescript
+/**
+ * Regla de acreditación para un curso, quiz específico o examen final específico.
+ * CONSTRAINT: (quiz_id IS NOT NULL AND examen_final_id IS NULL) OR
+ *             (quiz_id IS NULL AND examen_final_id IS NOT NULL) OR
+ *             (quiz_id IS NULL AND examen_final_id IS NULL)
+ * 
+ * Prioridad de reglas (usada por triggers):
+ * 1. Regla específica de examen_final_id
+ * 2. Regla específica de quiz_id
+ * 3. Regla general (solo curso_id)
+ * 
+ * UNIQUE constraints parciales:
+ * - Una regla activa general por curso (sin quiz_id ni examen_final_id)
+ * - Una regla activa específica por curso-quiz
+ * - Una regla activa específica por curso-examen_final
+ */
+export interface ReglaAcreditacion {
+  id: string; // UUID PRIMARY KEY
+  curso_id: string; // UUID NOT NULL REFERENCES curso(id)
+  quiz_id: string | null; // UUID REFERENCES quiz(id) | NULL
+  examen_final_id: string | null; // UUID REFERENCES examen_final(id) | NULL
+  min_score_aprobatorio: number; // NUMERIC(5,2) NOT NULL DEFAULT 80.00
+  max_intentos_quiz: number; // INT NOT NULL DEFAULT 3
+  bloquea_curso_por_reprobacion_quiz: boolean; // BOOLEAN NOT NULL DEFAULT TRUE
+  activa: boolean; // BOOLEAN NOT NULL DEFAULT TRUE
+  creado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  actualizado_en: string; // TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+}
+```
+
+### 1.2 Tipos de Vistas (Views de DB)
+
+#### `src/entities/progress/model/types.ts` - Actualizar
+
+```typescript
+/**
+ * Vista: inscripcion_modulo_calculada
+ * Calcula el progreso del módulo basándose en las inscripciones de materias (cursos).
+ * El estado se deriva de las inscripciones con prioridad: REPROBADA > CONCLUIDA > PAUSADA > ACTIVA.
+ * El módulo está acreditado solo si todas las materias están acreditadas y el usuario
+ * está inscrito en todas las materias del módulo.
+ */
+export interface InscripcionModuloCalculada {
+  usuario_id: string; // UUID
+  modulo_id: string; // UUID
+  estado: EstadoInscripcion; // estado_inscripcion (calculado)
+  acreditado: boolean; // BOOLEAN (calculado: todas acreditadas y todas inscritas)
+  acreditado_en: string | null; // TIMESTAMPTZ (MAX de acreditado_en de inscripciones)
+  fecha_inscripcion: string; // DATE (MIN de fecha_inscripcion)
+  fecha_conclusion: string | null; // DATE (MAX de fecha_conclusion)
+}
+
+/**
+ * Vista: respuesta_con_evaluacion
+ * Calcula dinámicamente es_correcta y puntos_otorgados basándose en el tipo de pregunta:
+ * - OPCION_MULTIPLE: es_correcta = opcion.es_correcta, puntos según configuración
+ * - VERDADERO_FALSO: es_correcta = (respuesta_bool = vf_respuesta_correcta), puntos según configuración
+ * - ABIERTA: es_correcta = NULL (requiere evaluación manual), puntos = NULL
+ */
+export interface RespuestaConEvaluacion extends Respuesta {
+  es_correcta: boolean | null; // BOOLEAN (calculado, NULL para ABIERTA)
+  puntos_otorgados: number | null; // NUMERIC (calculado, NULL para ABIERTA)
+}
+
+/**
+ * Vista: quiz_con_preguntas
+ * Incluye el número de preguntas por quiz
+ */
+export interface QuizConPreguntas extends Quiz {
+  numero_preguntas: number; // COUNT de preguntas
+}
+
+/**
+ * Vista: examen_final_con_preguntas
+ * Incluye el número de preguntas por examen final
+ */
+export interface ExamenFinalConPreguntas extends ExamenFinal {
+  numero_preguntas: number; // COUNT de preguntas
+}
+```
+
+### 1.3 Validación con Zod
+
+#### `src/entities/*/model/schemas.ts` - Crear schemas Zod para cada entidad
+
+```typescript
+import { z } from 'zod';
+
+export const inscripcionCursoSchema = z.object({
+  usuario_id: z.string().uuid(),
+  curso_id: z.string().uuid(),
+  estado: z.enum(['ACTIVA', 'PAUSADA', 'CONCLUIDA', 'REPROBADA']),
+  fecha_inscripcion: z.string().date(),
+});
+
+export const respuestaSchema = z.object({
+  intento_pregunta_id: z.string().uuid(),
+  respuesta_texto: z.string().nullable().optional(),
+  opcion_id: z.string().uuid().nullable().optional(),
+  respuesta_bool: z.boolean().nullable().optional(),
+}).refine(
+  (data) => data.respuesta_texto !== null || data.opcion_id !== null || data.respuesta_bool !== null,
+  { message: 'Debe proporcionar al menos una respuesta' }
+);
+```
+
+---
+
+## 🔄 Fase 2: Endpoints API y Servicios
+
+### 2.1 Actualizar `src/shared/api/endpoints.ts`
+
+```typescript
+export const API_ENDPOINTS = {
+  // Módulos
+  MODULOS: {
+    BASE: '/modulos',
+    BY_ID: (id: string) => `/modulos/${id}`,
+    CURSOS: (id: string) => `/modulos/${id}/cursos`,
+  },
+
+  // Cursos (Materias)
+  CURSOS: {
+    BASE: '/cursos',
+    BY_ID: (id: string) => `/cursos/${id}`,
+    INSCRIBIR: (id: string) => `/cursos/${id}/inscribir`,
+    DESINSCRIBIR: (id: string) => `/cursos/${id}/desinscribir`,
+    PROGRESO: (id: string) => `/cursos/${id}/progreso`,
+    GUIAS_ESTUDIO: (id: string) => `/cursos/${id}/guias-estudio`,
+  },
+
+  // Lecciones
+  LECCIONES: {
+    BASE: '/lecciones',
+    BY_ID: (id: string) => `/lecciones/${id}`,
+    CONTENIDO: (id: string) => `/lecciones/${id}/contenido`,
+    BY_MODULO: (moduloId: string) => `/lecciones?modulo_id=${moduloId}`,
+  },
+
+  // Quizzes
+  QUIZZES: {
+    BASE: '/quizzes',
+    BY_ID: (id: string) => `/quizzes/${id}`,
+    PREGUNTAS: (id: string) => `/quizzes/${id}/preguntas`,
+    INICIAR: (id: string) => `/quizzes/${id}/iniciar`,
+    ENVIAR: (id: string) => `/quizzes/${id}/enviar`,
+  },
+
+  // Exámenes Finales
+  EXAMENES_FINALES: {
+    BASE: '/examenes-finales',
+    BY_ID: (id: string) => `/examenes-finales/${id}`,
+    BY_CURSO: (cursoId: string) => `/examenes-finales?curso_id=${cursoId}`,
+    PREGUNTAS: (id: string) => `/examenes-finales/${id}/preguntas`,
+    INICIAR: (id: string) => `/examenes-finales/${id}/iniciar`,
+    ENVIAR: (id: string) => `/examenes-finales/${id}/enviar`,
+  },
+
+  // Intentos
+  INTENTOS: {
+    BASE: '/intentos',
+    BY_ID: (id: string) => `/intentos/${id}`,
+    BY_QUIZ: (quizId: string) => `/intentos?quiz_id=${quizId}`,
+    BY_EXAMEN: (examenId: string) => `/intentos?examen_final_id=${examenId}`,
+    RESULTADO: (id: string) => `/intentos/${id}/resultado`,
+  },
+
+  // Inscripciones
+  INSCRIPCIONES: {
+    BASE: '/inscripciones',
+    BY_ID: (id: string) => `/inscripciones/${id}`,
+    BY_USUARIO: (usuarioId: string) => `/inscripciones?usuario_id=${usuarioId}`,
+    BY_CURSO: (cursoId: string) => `/inscripciones?curso_id=${cursoId}`,
+    ACTUALIZAR_ESTADO: (id: string) => `/inscripciones/${id}/estado`,
+  },
+
+  // Certificados
+  CERTIFICADOS: {
+    BASE: '/certificados',
+    BY_ID: (id: string) => `/certificados/${id}`,
+    BY_INSCRIPCION: (inscripcionId: string) => `/certificados?inscripcion_curso_id=${inscripcionId}`,
+    DESCARGAR: (id: string) => `/certificados/${id}/descargar`,
+    VERIFICAR: (hash: string) => `/certificados/verificar/${hash}`,
+  },
+
+  // Foro
+  FORO: {
+    BASE: '/foro',
+    BY_CURSO: (cursoId: string) => `/foro?curso_id=${cursoId}`,
+    BY_LECCION: (leccionId: string) => `/foro?leccion_id=${leccionId}`,
+    CREAR: () => '/foro',
+    ACTUALIZAR: (id: string) => `/foro/${id}`,
+    ELIMINAR: (id: string) => `/foro/${id}`,
+  },
+
+  // Reglas de Acreditación
+  REGLAS_ACREDITACION: {
+    BASE: '/reglas-acreditacion',
+    BY_ID: (id: string) => `/reglas-acreditacion/${id}`,
+    BY_CURSO: (cursoId: string) => `/reglas-acreditacion?curso_id=${cursoId}`,
+  },
+};
+```
+
+### 2.2 Extender `api-client.ts` con métodos específicos
+
+```typescript
+// Agregar métodos al APIClient existente
+
+async getModulos(filters?: { publicado?: boolean }) {
+  return this.get(API_ENDPOINTS.MODULOS.BASE, filters);
+}
+
+async getModuloById(moduloId: string) {
+  return this.get(API_ENDPOINTS.MODULOS.BY_ID(moduloId));
+}
+
+async getCursosByModulo(moduloId: string) {
+  return this.get(API_ENDPOINTS.MODULOS.CURSOS(moduloId));
+}
+
+async inscribirEnCurso(cursoId: string) {
+  return this.post(API_ENDPOINTS.CURSOS.INSCRIBIR(cursoId));
+}
+
+async iniciarQuiz(quizId: string) {
+  return this.post(API_ENDPOINTS.QUIZZES.INICIAR(quizId));
+}
+
+async enviarQuiz(quizId: string, respuestas: Respuesta[]) {
+  return this.post(API_ENDPOINTS.QUIZZES.ENVIAR(quizId), { respuestas });
+}
+
+async iniciarExamenFinal(examenId: string) {
+  return this.post(API_ENDPOINTS.EXAMENES_FINALES.INICIAR(examenId));
+}
+
+async enviarExamenFinal(examenId: string, respuestas: Respuesta[]) {
+  return this.post(API_ENDPOINTS.EXAMENES_FINALES.ENVIAR(examenId), { respuestas });
+}
+
+async getCertificadoByInscripcion(inscripcionId: string) {
+  return this.get(API_ENDPOINTS.CERTIFICADOS.BY_INSCRIPCION(inscripcionId));
+}
+
+async descargarCertificado(certificadoId: string) {
+  return this.get(API_ENDPOINTS.CERTIFICADOS.DESCARGAR(certificadoId));
+}
+```
+
+---
+
+## 🔄 Fase 3: Hooks y Lógica de Negocio
+
+### 3.1 Hooks de React Query
+
+#### `src/entities/module/api/use-module.ts` - Crear
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/shared/api/api-client';
+import { API_ENDPOINTS } from '@/shared/api/endpoints';
+
+export const useModulos = (filters?: { publicado?: boolean }) => {
+  return useQuery({
+    queryKey: ['modulos', filters],
+    queryFn: () => apiClient.getModulos(filters),
+  });
+};
+
+export const useModulo = (moduloId: string) => {
+  return useQuery({
+    queryKey: ['modulo', moduloId],
+    queryFn: () => apiClient.getModuloById(moduloId),
+    enabled: !!moduloId,
+  });
+};
+```
+
+#### `src/entities/course/api/use-course.ts` - Crear
+
+```typescript
+export const useInscribirEnCurso = () => {
+  return useMutation({
+    mutationFn: (cursoId: string) => apiClient.inscribirEnCurso(cursoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inscripciones'] });
+    },
+  });
+};
+```
+
+#### `src/entities/quiz/api/use-quiz.ts` - Crear
+
+```typescript
+export const useIniciarQuiz = () => {
+  return useMutation({
+    mutationFn: (quizId: string) => apiClient.iniciarQuiz(quizId),
+  });
+};
+
+export const useEnviarQuiz = () => {
+  return useMutation({
+    mutationFn: ({ quizId, respuestas }: { quizId: string; respuestas: Respuesta[] }) =>
+      apiClient.enviarQuiz(quizId, respuestas),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['intentos'] });
+      queryClient.invalidateQueries({ queryKey: ['inscripciones'] });
+    },
+  });
+};
+```
+
+### 3.2 Lógica de Validación de Reglas de Negocio
+
+#### `src/shared/lib/quiz-rules.ts` - Crear
+
+```typescript
+import type { ReglaAcreditacion, Intento } from '@/entities';
+
+export const validarMaxIntentos = (
+  intentosActuales: Intento[],
+  regla: ReglaAcreditacion
+): { permitido: boolean; intentosRestantes: number } => {
+  const maxIntentos = regla.max_intentos_quiz;
+  const intentosCount = intentosActuales.length;
+  
+  return {
+    permitido: intentosCount < maxIntentos,
+    intentosRestantes: Math.max(0, maxIntentos - intentosCount),
+  };
+};
+
+export const validarScoreMinimo = (
+  puntaje: number,
+  regla: ReglaAcreditacion
+): boolean => {
+  return puntaje >= regla.min_score_aprobatorio;
+};
+
+export const validarPrerequisitosExamenFinal = async (
+  cursoId: string,
+  inscripcionId: string
+): Promise<{ permitido: boolean; quizzesPendientes: number }> => {
+  // Llamar a API para verificar si todos los quizzes están aprobados
+  const resultado = await apiClient.get(
+    API_ENDPOINTS.CURSOS.PROGRESO(cursoId),
+    { inscripcion_id: inscripcionId }
+  );
+  
+  return {
+    permitido: resultado.quizzes_pendientes === 0,
+    quizzesPendientes: resultado.quizzes_pendientes,
+  };
+};
+```
+
+---
+
+## 🔄 Fase 4: Componentes de UI
+
+### 4.1 Páginas de Módulos y Cursos
+
+#### `src/pages/student/ModulosPage.tsx` - Crear
+
+- Lista de módulos públicos
+- Filtro por fecha (activos, próximos, finalizados)
+- Cards con información de módulo y cursos asociados
+
+#### `src/pages/student/ModuloDetailPage.tsx` - Crear
+
+- Información del módulo
+- Lista de cursos (materias) del módulo
+- Progreso del módulo (vista `inscripcion_modulo_calculada`)
+- Botón de inscripción a cursos
+
+#### `src/pages/student/CursoDetailPage.tsx` - Crear
+
+- Información del curso
+- Lista de lecciones (ordenadas por `orden`)
+- Contenido de lecciones (TEXTO, PDF, VIDEO, LINK)
+- Quizzes de cada lección
+- Examen final (si está disponible)
+- Estado de inscripción
+- Progreso del curso
+
+### 4.2 Páginas de Lecciones y Contenido
+
+#### `src/pages/student/LessonPage.tsx` - Crear
+
+- Contenido de la lección (renderizado según tipo)
+- Navegación entre lecciones
+- Quiz asociado (si existe)
+- Foro de comentarios de la lección
+
+#### `src/widgets/lesson/LessonContentView.tsx` - Crear
+
+- Renderizado condicional según `TipoContenido`:
+  - TEXTO: Markdown o HTML
+  - PDF: Visor de PDF (iframe o embed)
+  - VIDEO: Player de video
+  - LINK: Redirección o preview
+
+### 4.3 Páginas de Evaluación
+
+#### `src/pages/student/QuizPage.tsx` - Crear
+
+- Mostrar preguntas (ordenadas o aleatorias según `quiz.aleatorio`)
+- Renderizado según tipo de pregunta:
+  - OPCION_MULTIPLE: Checkboxes o Radios (según `om_seleccion_multiple`)
+  - VERDADERO_FALSO: Toggle o Radio buttons
+  - ABIERTA: Textarea
+- Validación de respuestas según `PreguntaConfig`
+- Contador de intentos restantes
+- Botón de envío
+
+#### `src/pages/student/ExamenFinalPage.tsx` - Crear
+
+- Similar a QuizPage pero para examen final
+- Validación de prerrequisitos (todos los quizzes aprobados)
+- Timer (si hay límite de tiempo)
+- Mensaje de bloqueo si no se cumplen prerrequisitos
+
+#### `src/pages/student/QuizResultPage.tsx` - Crear
+
+- Resultado del intento (puntaje, resultado)
+- Desglose de respuestas correctas/incorrectas
+- Puntos otorgados por pregunta
+- Mensaje según resultado (aprobado/no aprobado)
+- Información de intentos restantes
+- Botón para nuevo intento (si `permitir_nuevo_intento = true`)
+
+### 4.4 Páginas de Progreso e Inscripciones
+
+#### `src/pages/student/MyCoursesPage.tsx` - Crear
+
+- Lista de inscripciones del usuario
+- Filtro por estado (ACTIVA, PAUSADA, CONCLUIDA, REPROBADA)
+- Cards con progreso de cada curso
+- Estado de acreditación
+- Acceso a certificado (si está acreditado)
+
+#### `src/pages/student/ProgressPage.tsx` - Crear
+
+- Vista general de progreso
+- Gráficos de progreso por módulo/curso
+- Estadísticas (cursos completados, certificados, promedio)
+- Comparación con otros estudiantes (si aplica)
+
+### 4.5 Páginas de Certificados
+
+#### `src/pages/student/CertificatesPage.tsx` - Crear
+
+- Lista de certificados obtenidos
+- Información de cada certificado (folio, fecha de emisión)
+- Botón de descarga (usar `s3_key` o presigned URL)
+- Verificación de certificado (usar `hash_verificacion`)
+
+#### `src/pages/public/VerifyCertificatePage.tsx` - Crear
+
+- Página pública para verificar certificados
+- Input de `hash_verificacion`
+- Mostrar información del certificado si es válido
+
+### 4.6 Páginas de Foro
+
+#### `src/pages/student/ForumPage.tsx` - Crear
+
+- Lista de comentarios por lección/curso
+- Formulario para crear comentario
+- Edición/eliminación de comentarios propios
+- Filtros y ordenamiento
+
+---
+
+## 🔄 Fase 5: Integración y Validación de Reglas de Negocio
+
+### 5.1 Validación de Intentos
+
+- Implementar validación de máximo de intentos antes de iniciar quiz/examen
+- Mostrar mensaje si se alcanzó el límite
+- Validar `permitir_nuevo_intento` antes de permitir nuevo intento
+
+### 5.2 Validación de Prerrequisitos
+
+- Validar que todos los quizzes estén aprobados antes de permitir examen final
+- Mostrar lista de quizzes pendientes si no se cumplen prerrequisitos
+- Bloquear acceso al examen final hasta cumplir prerrequisitos
+
+### 5.3 Validación de Acreditación
+
+- Validar score mínimo (80% por defecto) antes de marcar como aprobado
+- Mostrar mensaje si no se alcanza el score mínimo
+- Actualizar estado de inscripción según resultado
+- Generar certificado automáticamente cuando se acredita
+
+### 5.4 Manejo de Estados de Inscripción
+
+- Controlar transiciones de estado (ACTIVA → PAUSADA → CONCLUIDA/REPROBADA)
+- Validar que inscripciones CONCLUIDAS no cambien de estado
+- Mostrar UI según estado de inscripción
+
+### 5.5 Validación de Tipos de Pregunta
+
+- Validar que las respuestas coincidan con el tipo de pregunta
+- Mostrar UI apropiada según tipo (checkbox, radio, textarea)
+- Validar selecciones múltiples según `om_min_selecciones` y `om_max_selecciones`
+
+---
+
+## 🔄 Fase 6: Optimizaciones y Mejoras
+
+### 6.1 Optimización de Carga
+
+- Lazy loading de rutas
+- Code splitting por entidad
+- Skeleton loaders para mejor UX
+- Paginación de listas grandes
+
+### 6.2 Manejo de Errores
+
+- Error boundaries por sección
+- Mensajes de error amigables
+- Reintentos automáticos para requests fallidos
+- Logging de errores para debugging
+
+### 6.3 Accesibilidad
+
+- ARIA labels en componentes interactivos
+- Navegación por teclado
+- Contraste de colores
+- Screen reader support
+
+### 6.4 Testing
+
+- Unit tests para hooks y utilidades
+- Integration tests para flujos críticos
+- E2E tests para flujos completos (login → curso → quiz → certificado)
+
+---
+
+## 🔄 Fase 7: Producción y Despliegue
+
+### 7.1 Variables de Entorno
+
+```env
+VITE_API_URL=https://api.produccion.com/api
+VITE_COGNITO_USER_POOL_ID=us-east-1_xxxxx
+VITE_COGNITO_CLIENT_ID=xxxxx
+VITE_USE_MOCKS=false
+```
+
+### 7.2 Build y Optimización
+
+- Build de producción optimizado
+- Verificación de bundle size
+- Optimización de imágenes
+- CDN para assets estáticos
+
+### 7.3 Monitoreo
+
+- Integración con servicio de monitoreo (Sentry, etc.)
+- Tracking de errores
+- Analytics de uso
+- Performance monitoring
+
+---
+
+## Checklist de Implementación
+
+### ✅ Fase 1: Tipos
+- [x] Tipos de Módulo
+- [x] Tipos de Curso/Materia
+- [x] Tipos de Lección y Contenido
+- [x] Tipos de Quiz y Examen Final
+- [x] Tipos de Pregunta, Config y Opción
+- [x] Tipos de Inscripción
+- [x] Tipos de Intento y Respuesta
+- [x] Tipos de Certificado
+- [x] Tipos de Usuario y Rol
+- [x] Tipos de Foro
+- [x] Tipos de Notificaciones
+- [x] Tipos de Reglas de Acreditación
+- [x] Schemas Zod para validación
+
+### 🔄 Fase 2: API
+- [ ] Endpoints actualizados
+- [ ] Métodos en api-client
+- [ ] Manejo de errores
+- [ ] Type safety en requests/responses
+
+### 🔄 Fase 3: Hooks
+- [ ] Hooks de React Query para cada entidad
+- [ ] Mutations para acciones (inscribir, enviar quiz, etc.)
+- [ ] Validación de reglas de negocio
+- [ ] Cache management
+
+### 🔄 Fase 4: UI
+- [ ] Páginas de módulos
+- [ ] Páginas de cursos
+- [ ] Páginas de lecciones
+- [ ] Páginas de quizzes
+- [ ] Páginas de exámenes finales
+- [ ] Páginas de progreso
+- [ ] Páginas de certificados
+- [ ] Páginas de foro
+- [ ] Componentes reutilizables
+
+### 🔄 Fase 5: Validación
+- [ ] Validación de intentos máximos
+- [ ] Validación de prerrequisitos
+- [ ] Validación de acreditación
+- [ ] Manejo de estados de inscripción
+- [ ] Validación de tipos de pregunta
+
+### 🔄 Fase 6: Optimización
+- [ ] Lazy loading
+- [ ] Skeleton loaders
+- [ ] Error boundaries
+- [ ] Accesibilidad
+- [ ] Tests
+
+### 🔄 Fase 7: Producción
+- [ ] Variables de entorno
+- [ ] Build optimizado
+- [ ] Monitoreo configurado
+- [ ] Documentación actualizada
+
+---
+
+## ✅ Fase 0: Configuración y Definición del Contrato (API-First)
 
 ### Instalación de Dependencias
 

@@ -13,7 +13,6 @@ CREATE TYPE tipo_contenido AS ENUM ('TEXTO', 'PDF', 'VIDEO', 'LINK');
 CREATE TYPE estado_inscripcion AS ENUM ('ACTIVA', 'PAUSADA', 'CONCLUIDA', 'REPROBADA');
 CREATE TYPE resultado_intento AS ENUM ('APROBADO', 'NO_APROBADO');
 CREATE TYPE tipo_pregunta AS ENUM ('ABIERTA', 'OPCION_MULTIPLE', 'VERDADERO_FALSO');
-CREATE TYPE estado_entrega AS ENUM ('PENDIENTE', 'ENTREGADA', 'CALIFICADA');
 
 -- =====================================================
 -- Tablas de Usuarios y Acceso
@@ -48,6 +47,10 @@ CREATE TABLE usuario_rol (
 -- =====================================================
 -- Tablas de Contenido: Módulo y Materias
 -- =====================================================
+-- Nota: La tabla se llama "curso" pero conceptualmente
+-- representa una "Materia" en el modelo de negocio.
+-- Jerarquía: Módulo → Materia (curso) → Lección → Quiz
+-- =====================================================
 
 CREATE TABLE curso (
   id UUID PRIMARY KEY,
@@ -68,6 +71,8 @@ CREATE TABLE modulo (
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT chk_fechas_modulo CHECK (fecha_fin >= fecha_inicio)
 );
+-- Nota: Las fechas del módulo controlan cuándo todo el contenido está disponible.
+-- Cuando el módulo está activo/publicado, todas las lecciones se muestran automáticamente.
 
 CREATE TABLE modulo_curso (
   id UUID PRIMARY KEY,
@@ -79,6 +84,8 @@ CREATE TABLE modulo_curso (
   UNIQUE (modulo_id, slot),
   UNIQUE (modulo_id, curso_id)
 );
+-- Tabla pivote que vincula módulos con materias (cursos).
+-- Permite que un módulo tenga múltiples materias.
 
 CREATE TABLE guia_estudio (
   id UUID PRIMARY KEY,
@@ -99,6 +106,9 @@ CREATE TABLE leccion (
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+-- Nota: Las lecciones NO tienen fechas propias (fecha_inicio/fecha_fin).
+-- Las fechas del módulo controlan cuándo el contenido está disponible.
+-- Se asocian a materias a través de la relación módulo-materia (modulo_curso).
 
 CREATE TABLE leccion_contenido (
   id UUID PRIMARY KEY,
@@ -115,6 +125,9 @@ CREATE TABLE leccion_contenido (
 -- =====================================================
 -- Tablas de Evaluaciones
 -- =====================================================
+-- Jerarquía: Módulo → Materia (curso) → Lección → Quiz
+-- Cada lección tiene un quiz asociado (tarea evaluable).
+-- =====================================================
 
 CREATE TABLE quiz (
   id UUID PRIMARY KEY,
@@ -126,6 +139,8 @@ CREATE TABLE quiz (
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+-- Quiz vinculado a una lección específica.
+-- Los quizzes son las tareas evaluables del sistema.
 
 CREATE TABLE examen_final (
   id UUID PRIMARY KEY,
@@ -137,6 +152,9 @@ CREATE TABLE examen_final (
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+-- Examen final de la materia (curso).
+-- Solo accesible después de completar todos los quizzes de las lecciones.
+-- Jerarquía: Módulo → Materia (curso) → Examen Final
 
 CREATE TABLE pregunta (
   id UUID PRIMARY KEY,
@@ -192,32 +210,10 @@ CREATE TABLE opcion (
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE tarea (
-  id UUID PRIMARY KEY,
-  curso_id UUID NOT NULL REFERENCES curso(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  titulo VARCHAR(200) NOT NULL,
-  descripcion TEXT,
-  fecha_limite TIMESTAMPTZ,
-  publicado BOOLEAN,
-  creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE entrega (
-  id UUID PRIMARY KEY,
-  tarea_id UUID NOT NULL REFERENCES tarea(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  estado estado_entrega NOT NULL DEFAULT 'PENDIENTE',
-  calificacion NUMERIC(5,2),
-  entregado_en TIMESTAMPTZ,
-  calificado_en TIMESTAMPTZ,
-  permitir_nuevo_intento BOOLEAN NOT NULL DEFAULT FALSE,
-  creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
 -- =====================================================
 -- Tablas de Inscripción y Progreso
+-- =====================================================
+-- Nota: inscripcion_curso representa inscripción a una "Materia" (curso).
 -- =====================================================
 
 CREATE TABLE inscripcion_curso (
@@ -254,6 +250,9 @@ CREATE TABLE intento (
     (quiz_id IS NULL AND examen_final_id IS NOT NULL)
   )
 );
+-- Permite múltiples intentos por quiz/examen.
+-- El instructor controla nuevos intentos mediante permitir_nuevo_intento.
+-- NO ACTION en usuario_id preserva historial si se elimina el usuario.
 
 CREATE TABLE intento_pregunta (
   id UUID PRIMARY KEY,
@@ -348,9 +347,6 @@ CREATE INDEX idx_examen_final_curso_id ON examen_final(curso_id);
 CREATE INDEX idx_pregunta_quiz_id ON pregunta(quiz_id);
 CREATE INDEX idx_pregunta_examen_final_id ON pregunta(examen_final_id);
 CREATE INDEX idx_opcion_pregunta_id ON opcion(pregunta_id);
-CREATE INDEX idx_tarea_curso_id ON tarea(curso_id);
-CREATE INDEX idx_entrega_tarea_id ON entrega(tarea_id);
-CREATE INDEX idx_entrega_usuario_id ON entrega(usuario_id);
 CREATE INDEX idx_inscripcion_curso_usuario_id ON inscripcion_curso(usuario_id);
 CREATE INDEX idx_inscripcion_curso_curso_id ON inscripcion_curso(curso_id);
 CREATE INDEX idx_intento_usuario_id ON intento(usuario_id);
@@ -381,7 +377,6 @@ CREATE INDEX idx_modulo_publicado ON modulo(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_quiz_publicado ON quiz(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_examen_final_publicado ON examen_final(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_leccion_publicado ON leccion(publicado) WHERE publicado = TRUE;
-CREATE INDEX idx_tarea_publicado ON tarea(publicado) WHERE publicado = TRUE;
 CREATE INDEX idx_guia_estudio_activo ON guia_estudio(activo) WHERE activo = TRUE;
 CREATE INDEX idx_inscripcion_curso_estado ON inscripcion_curso(estado);
 CREATE INDEX idx_inscripcion_curso_acreditado ON inscripcion_curso(acreditado) WHERE acreditado = TRUE;
@@ -454,9 +449,8 @@ GROUP BY ef.id;
 -- Vista: inscripcion_modulo_calculada
 -- =====================================================
 -- Calcula el progreso del módulo basándose en las
--- inscripciones de curso. El progreso se deriva de
--- las inscripciones de curso del usuario en los cursos
--- que pertenecen al módulo.
+-- inscripciones de materias (cursos). El progreso se deriva
+-- del progreso en las materias que componen el módulo.
 -- =====================================================
 
 CREATE VIEW inscripcion_modulo_calculada AS
@@ -564,8 +558,6 @@ CREATE INDEX idx_usuario_nombre_gin ON usuario USING GIN (nombre gin_trgm_ops);
 CREATE INDEX idx_usuario_apellido_gin ON usuario USING GIN (apellido gin_trgm_ops);
 CREATE INDEX idx_foro_comentario_contenido_gin ON foro_comentario USING GIN (contenido gin_trgm_ops);
 CREATE INDEX idx_leccion_titulo_gin ON leccion USING GIN (titulo gin_trgm_ops);
-CREATE INDEX idx_tarea_titulo_gin ON tarea USING GIN (titulo gin_trgm_ops);
-CREATE INDEX idx_tarea_descripcion_gin ON tarea USING GIN (descripcion gin_trgm_ops);
 CREATE INDEX idx_quiz_titulo_gin ON quiz USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_examen_final_titulo_gin ON examen_final USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_pregunta_enunciado_gin ON pregunta USING GIN (enunciado gin_trgm_ops);

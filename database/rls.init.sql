@@ -84,8 +84,6 @@ ALTER TABLE examen_final ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pregunta ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pregunta_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE opcion ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tarea ENABLE ROW LEVEL SECURITY;
-ALTER TABLE entrega ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inscripcion_curso ENABLE ROW LEVEL SECURITY;
 ALTER TABLE intento ENABLE ROW LEVEL SECURITY;
 ALTER TABLE intento_pregunta ENABLE ROW LEVEL SECURITY;
@@ -127,15 +125,16 @@ USING (is_admin())
 WITH CHECK (is_admin());
 
 -- =====================================================
--- Políticas para tabla curso
+-- Políticas para tabla curso (Materia)
 -- =====================================================
+-- Nota: La tabla se llama "curso" pero conceptualmente representa una "Materia"
 
--- Todos pueden ver cursos públicos
+-- Todos pueden ver materias (cursos) públicas
 CREATE POLICY curso_select_public ON curso
 FOR SELECT
 USING (publicado = TRUE OR is_admin());
 
--- Los administradores pueden hacer todo en cursos
+-- Los administradores pueden hacer todo en materias (cursos)
 CREATE POLICY curso_all_admin ON curso
 FOR ALL
 USING (is_admin())
@@ -160,7 +159,7 @@ WITH CHECK (is_admin());
 -- Políticas para tabla leccion
 -- =====================================================
 
--- Todos pueden ver lecciones públicas de módulos y cursos públicos
+-- Todos pueden ver lecciones públicas de módulos y materias (cursos) públicos
 CREATE POLICY leccion_select_public ON leccion
 FOR SELECT
 USING (
@@ -187,7 +186,7 @@ WITH CHECK (is_admin());
 -- Políticas para tabla quiz
 -- =====================================================
 
--- Todos pueden ver quizzes públicos de lecciones, módulos y cursos públicos
+-- Todos pueden ver quizzes públicos de lecciones, módulos y materias (cursos) públicos
 CREATE POLICY quiz_select_public ON quiz
 FOR SELECT
 USING (
@@ -216,7 +215,7 @@ WITH CHECK (is_admin());
 -- Políticas para tabla examen_final
 -- =====================================================
 
--- Todos pueden ver exámenes finales públicos de cursos públicos
+-- Todos pueden ver exámenes finales públicos de materias (cursos) públicos
 CREATE POLICY examen_final_select_public ON examen_final
 FOR SELECT
 USING (
@@ -236,33 +235,11 @@ USING (is_admin())
 WITH CHECK (is_admin());
 
 -- =====================================================
--- Políticas para tabla tarea
--- =====================================================
-
--- Todos pueden ver tareas públicas de cursos públicos
-CREATE POLICY tarea_select_public ON tarea
-FOR SELECT
-USING (
-  publicado = TRUE 
-  AND EXISTS (
-    SELECT 1 FROM curso c 
-    WHERE c.id = tarea.curso_id 
-    AND c.publicado = TRUE
-  )
-  OR is_admin()
-);
-
--- Los administradores pueden hacer todo en tareas
-CREATE POLICY tarea_all_admin ON tarea
-FOR ALL
-USING (is_admin())
-WITH CHECK (is_admin());
-
--- =====================================================
 -- Políticas para tabla inscripcion_curso
 -- =====================================================
+-- Nota: Representa inscripción a una "Materia" (curso)
 
--- Los usuarios pueden ver sus propias inscripciones
+-- Los usuarios pueden ver sus propias inscripciones a materias
 CREATE POLICY inscripcion_curso_select_own ON inscripcion_curso
 FOR SELECT
 USING (usuario_id = get_current_user_id() OR is_admin());
@@ -311,36 +288,10 @@ USING (is_admin())
 WITH CHECK (is_admin());
 
 -- =====================================================
--- Políticas para tabla entrega
--- =====================================================
-
--- Los usuarios pueden ver sus propias entregas
-CREATE POLICY entrega_select_own ON entrega
-FOR SELECT
-USING (usuario_id = get_current_user_id() OR is_admin());
-
--- Los usuarios pueden insertar sus propias entregas
-CREATE POLICY entrega_insert_own ON entrega
-FOR INSERT
-WITH CHECK (usuario_id = get_current_user_id() OR is_admin());
-
--- Los usuarios pueden actualizar sus propias entregas
-CREATE POLICY entrega_update_own ON entrega
-FOR UPDATE
-USING (usuario_id = get_current_user_id() OR is_admin())
-WITH CHECK (usuario_id = get_current_user_id() OR is_admin());
-
--- Los administradores pueden hacer todo en entregas
-CREATE POLICY entrega_all_admin ON entrega
-FOR ALL
-USING (is_admin())
-WITH CHECK (is_admin());
-
--- =====================================================
 -- Políticas para tabla foro_comentario
 -- =====================================================
 
--- Los usuarios pueden ver comentarios de cursos donde están inscritos
+-- Los usuarios pueden ver comentarios de materias (cursos) donde están inscritos
 CREATE POLICY foro_comentario_select_inscribed ON foro_comentario
 FOR SELECT
 USING (
@@ -352,7 +303,7 @@ USING (
   OR is_admin()
 );
 
--- Los usuarios pueden insertar comentarios en cursos donde están inscritos
+-- Los usuarios pueden insertar comentarios en materias (cursos) donde están inscritos
 CREATE POLICY foro_comentario_insert_inscribed ON foro_comentario
 FOR INSERT
 WITH CHECK (

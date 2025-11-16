@@ -1,683 +1,874 @@
 # Guía de Desarrollo - Backend (FastAPI)
 
+## Contexto del Proyecto
+
+**Perfil del Equipo de Desarrollo:**
+- **Rol**: Ingeniero Senior Backend
+- **Experiencia**: Experto en Python y FastAPI
+- **Enfoque**: Desarrollo de API RESTful robusta, escalable y mantenible
+- **Estándares**: Código limpio, arquitectura modular, buenas prácticas de Python
+
+**Stack Tecnológico:**
+- **Framework**: FastAPI (Python 3.11+)
+- **Lenguaje**: Python (tipado con type hints, Pydantic)
+- **Base de Datos**: PostgreSQL 15+ con SQLAlchemy ORM
+- **Autenticación**: Amazon Cognito (JWT)
+- **Almacenamiento**: AWS S3
+- **Contenedorización**: Docker
+- **Despliegue**: AWS ECS Fargate
+
+**Principios de Desarrollo:**
+- Type safety: Uso extensivo de type hints y Pydantic
+- Dependency Injection: FastAPI Depends para inyección de dependencias
+- Separation of Concerns: Routes → Services → Database
+- Error Handling: Excepciones personalizadas y manejo centralizado
+- Security First: Validación de entrada, autenticación, autorización y RLS
+- Database Integrity: Triggers y constraints en BD, validaciones en aplicación
+- Testing: Tests unitarios y de integración
+- Documentation: Docstrings, type hints y documentación automática de API
+
 ## Arquitectura
 
 - **Framework**: FastAPI (Python)
 - **Estructura**: Monolito modular
-- **Base de datos**: PostgreSQL
+- **Base de datos**: PostgreSQL con RLS (Row Level Security)
 - **Autenticación**: Amazon Cognito (validación de JWT)
 - **Almacenamiento**: S3 (URLs prefirmadas)
 - **Contenedorización**: Docker
 - **Despliegue**: AWS ECS Fargate
 
-## Fase 0: Configuración y Definición del Contrato (FastAPI-First)
+## Estructura de la Base de Datos
 
-### Estructura del Proyecto
+### Jerarquía de Contenido
+```
+Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
+  └── Materia (curso) [múltiples por módulo, tabla: modulo_curso]
+      ├── Guía de Estudio (múltiples por materia)
+      ├── Lección (pertenece al módulo, NO al curso directamente)
+      │   └── Contenido (texto, PDF, video, link) [múltiples por lección]
+      ├── Quiz (evaluación asociada a una lección)
+      │   └── Pregunta
+      │       ├── Configuración (tipo: ABIERTA, OPCION_MULTIPLE, VERDADERO_FALSO)
+      │       └── Opción (para opción múltiple)
+      └── Examen Final (evaluación final de la materia/curso)
+          └── Pregunta (comparte estructura con quiz)
+```
+
+**Notas importantes:**
+- La tabla se llama `curso` pero conceptualmente representa una **"Materia"** en el modelo de negocio
+- Las lecciones pertenecen directamente al **módulo**, no al curso/materia
+- Las lecciones se asocian a materias a través de la relación módulo-materia (`modulo_curso`)
+- Las fechas del módulo controlan cuándo todo el contenido está disponible (lecciones NO tienen fechas propias)
+- Una inscripción es a una **materia (curso)**, no a un módulo completo
+
+### Entidades Principales
+
+**Usuarios y Acceso:**
+- **Usuario**: Integrado con Cognito (`cognito_user_id`), email único
+- **Rol**: Sistema de roles (estudiante, coordinador, admin)
+- **UsuarioRol**: Relación usuario-rol (tabla pivote)
+
+**Contenido:**
+- **Módulo**: Contenedor temporal con fechas de inicio/fin (`fecha_inicio`, `fecha_fin`), controla disponibilidad de contenido
+- **Curso (Materia)**: Materia específica, puede estar en múltiples módulos
+- **ModuloCurso**: Tabla pivote que vincula módulos con materias, incluye `slot` para orden
+- **GuiaEstudio**: Guías de estudio asociadas a una materia (`url`, `activo`)
+- **Lección**: Contenido educativo perteneciente a un módulo (orden, publicado)
+- **LeccionContenido**: Contenido específico de una lección (texto, PDF, video, link), múltiples por lección
+
+**Evaluaciones:**
+- **Quiz**: Evaluación asociada a una lección (`aleatorio`, `guarda_calificacion`)
+- **ExamenFinal**: Evaluación final de una materia/curso
+- **Pregunta**: Pregunta asociada a un quiz O examen final (exclusivo: solo uno de los dos)
+- **PreguntaConfig**: Configuración de pregunta según tipo (ABIERTA, OPCION_MULTIPLE, VERDADERO_FALSO)
+- **Opcion**: Opciones para preguntas de opción múltiple (`es_correcta`, `orden`)
+
+**Inscripción y Progreso:**
+- **InscripcionCurso**: Inscripción a una materia/curso (estado: ACTIVA, PAUSADA, CONCLUIDA, REPROBADA), `acreditado`, fechas de inscripción/conclusión
+- **Intento**: Registro de intento de quiz o examen final (`numero_intento`, `puntaje`, `resultado`, `permitir_nuevo_intento`)
+- **IntentoPregunta**: Relación intento-pregunta (puntos_maximos)
+- **Respuesta**: Respuesta del usuario (según tipo: `respuesta_texto`, `opcion_id`, `respuesta_bool`)
+
+**Acreditación:**
+- **ReglaAcreditacion**: Reglas configurables por curso/quiz/examen (`min_score_aprobatorio`, `max_intentos_quiz`, `bloquea_curso_por_reprobacion_quiz`, `activa`)
+- **Certificado**: Certificado generado al acreditar (`folio`, `hash_verificacion`, `s3_key`, `valido`)
+
+**Interacción:**
+- **ForoComentario**: Comentarios en foro de lecciones (`curso_id`, `leccion_id`, `usuario_id`)
+- **PreferenciaNotificacion**: Preferencias de notificaciones por usuario (email_recordatorios, email_motivacion, email_resultados)
+
+### Vistas Calculadas
+
+- **quiz_con_preguntas**: Quiz con conteo de preguntas
+- **examen_final_con_preguntas**: Examen final con conteo de preguntas
+- **inscripcion_modulo_calculada**: Progreso calculado a nivel de módulo basado en inscripciones de materias
+  - Estado: prioridad REPROBADA > CONCLUIDA > PAUSADA > ACTIVA
+  - Acreditado: todos los cursos del módulo deben estar acreditados
+- **respuesta_con_evaluacion**: Calcula dinámicamente `es_correcta` y `puntos_otorgados` basado en tipo de pregunta
+
+### Reglas de Negocio (Triggers)
+
+**Validación de Intentos:**
+- `validar_max_intentos()`: Valida que no se exceda el máximo de intentos según `regla_acreditacion` (default: 3)
+- `validar_nuevo_intento_permitido()`: Valida que `permitir_nuevo_intento = TRUE` en el último intento para crear uno nuevo
+- `validar_intento_inscripcion()`: Valida que el usuario coincida con la inscripción y que el quiz/examen pertenezca a la materia
+
+**Validación de Evaluaciones:**
+- `validar_examen_final_prerequisitos()`: Valida que todos los quizzes de lecciones de la materia estén aprobados antes del examen final
+- `validar_respuesta_tipo()`: Valida que el tipo de respuesta coincida con el tipo de pregunta (ABIERTA → texto, OPCION_MULTIPLE → opcion_id, VERDADERO_FALSO → respuesta_bool)
+
+**Validación de Inscripciones:**
+- `validar_transicion_estado_inscripcion()`: 
+  - Una inscripción CONCLUIDA no puede cambiar de estado
+  - Una inscripción REPROBADA solo puede mantenerse o concluirse
+  - Actualiza `fecha_conclusion` automáticamente al concluir/reprobar
+- `validar_acreditacion_curso()`: 
+  - Valida que existe un intento aprobado del examen final con score >= `min_score_aprobatorio`
+  - Actualiza estado a CONCLUIDA al acreditar
+  - Establece `acreditado_en` automáticamente
+
+**Validación de Foro:**
+- `validar_foro_comentario_curso()`: Valida que el `curso_id` del comentario coincida con una de las materias del módulo de la lección
+
+### Seguridad (RLS - Row Level Security)
+
+**Funciones Helper:**
+- `get_current_user_id()`: Obtiene `usuario_id` desde `app.current_cognito_user_id` (variable de sesión)
+- `is_admin()`: Verifica si el usuario actual tiene rol ADMIN
+
+**Políticas por Tabla:**
+- **Usuario**: Usuarios ven/actualizan sus propios datos; admins acceso completo
+- **Curso/Módulo/Lección/Quiz/ExamenFinal**: Contenido público visible si `publicado = TRUE`; admins acceso completo
+- **InscripcionCurso**: Usuarios ven/actualizan sus propias inscripciones; admins acceso completo
+- **Intento**: Usuarios ven/actualizan sus propios intentos; admins acceso completo
+- **Certificado**: Usuarios ven sus propios certificados (a través de inscripción); admins acceso completo
+- **ForoComentario**: Usuarios ven comentarios de materias donde están inscritos; pueden crear/editar sus propios comentarios
+- **PreferenciaNotificacion**: Usuarios gestionan sus propias preferencias
+- **Tablas de Administración** (rol, usuario_rol, regla_acreditacion, pregunta, opcion, etc.): Solo admins
+
+**Integración con Cognito:**
+- RLS usa variable de sesión `app.current_cognito_user_id` para identificar usuario
+- El backend debe establecer esta variable antes de queries (ver Fase 10)
+
+---
+
+## Plan de Desarrollo por Fases
+
+### ✅ Fase 0: Configuración e Infraestructura Base
+
+**Estado**: Completado
+
+**Objetivos**:
+- Configuración de Docker y docker-compose
+- Configuración de variables de entorno
+- FastAPI app básica con CORS y manejo de errores
+- Health check endpoint
+
+**Archivos creados**:
+- `docker-compose.yml`
+- `backend/app/config.py` (Pydantic Settings)
+- `backend/app/main.py` (FastAPI app)
+- `.env` (variables de entorno)
+
+---
+
+### ✅ Fase 1: Autenticación y Servicios Externos (Sin BD)
+
+**Estado**: Completado
+
+**Objetivos**:
+- Autenticación con Cognito JWT
+- Validación de roles desde grupos Cognito
+- Servicios S3 para URLs prefirmadas
+- Servicio de generación de certificados PDF
+
+**Archivos creados**:
+- ✅ `backend/app/utils/auth.py` (verificación JWT, cache JWKS)
+- ✅ `backend/app/utils/roles.py` (validación de roles)
+- ✅ `backend/app/utils/exceptions.py` (excepciones personalizadas)
+- ✅ `backend/app/services/s3_service.py` (URLs prefirmadas, upload/download)
+- ✅ `backend/app/services/certificate_service.py` (generación PDF, hash verificación)
+
+---
+
+### ✅ Fase 2: Modelos de Base de Datos y Conexión
+
+**Estado**: Completado
+
+**Objetivos**:
+- Crear modelos SQLAlchemy para todas las tablas
+- Configurar conexión a PostgreSQL
+- Configurar sesión de base de datos
+- Mapear ENUMs de PostgreSQL a Python
+
+**Tareas completadas**:
+1. ✅ Crear `backend/app/database/session.py`
+   - Engine de SQLAlchemy configurado
+   - Función `get_db()` dependency creada
+   - Pool de conexiones configurado (development/production)
+   - Timezone UTC configurado automáticamente
+
+2. ✅ Crear `backend/app/database/models.py`
+   - 23 modelos SQLAlchemy creados:
+     - `Usuario`, `Rol`, `UsuarioRol`
+     - `Curso`, `Modulo`, `ModuloCurso`, `GuiaEstudio`
+     - `Leccion`, `LeccionContenido`
+     - `Quiz`, `ExamenFinal`, `Pregunta`, `PreguntaConfig`, `Opcion`
+     - `InscripcionCurso`, `Intento`, `IntentoPregunta`, `Respuesta`
+     - `ReglaAcreditacion`, `Certificado`
+     - `ForoComentario`, `PreferenciaNotificacion`
+   - Relaciones bidireccionales configuradas
+   - Constraints y validaciones implementadas
+   - Type hints con `Mapped[]` (SQLAlchemy 2.0)
+
+3. ✅ Crear `backend/app/database/enums.py`
+   - `EstadoPublicacion` mapeado
+   - `TipoContenido` mapeado
+   - `EstadoInscripcion` mapeado
+   - `ResultadoIntento` mapeado
+   - `TipoPregunta` mapeado
+
+4. ⏭️ Alembic (No requerido)
+   - Se usa `init.sql` directamente para inicializar la BD
+   - No hay producción ni migraciones previas
+
+**Archivos creados**:
+- ✅ `backend/app/database/__init__.py`
+- ✅ `backend/app/database/session.py`
+- ✅ `backend/app/database/models.py`
+- ✅ `backend/app/database/enums.py`
+
+---
+
+### 🔄 Fase 3: Schemas Pydantic (Contrato API)
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Crear schemas Pydantic basados en modelos SQLAlchemy
+- Definir request/response models para todos los endpoints
+- Validaciones de negocio en schemas
+
+**Tareas**:
+1. Crear `backend/app/schemas/usuario.py`
+   - `UsuarioBase`, `UsuarioCreate`, `Usuario`, `UsuarioResponse`
+
+2. Crear `backend/app/schemas/curso.py`
+   - `CursoBase`, `CursoCreate`, `Curso`, `CursoResponse`
+   - `GuiaEstudioResponse` (con URL prefirmada)
+
+3. Crear `backend/app/schemas/modulo.py`
+   - `ModuloBase`, `ModuloCreate`, `Modulo`, `ModuloResponse`
+   - `ModuloConCursos` (con lista de cursos)
+
+4. Crear `backend/app/schemas/leccion.py`
+   - `LeccionBase`, `LeccionCreate`, `Leccion`, `LeccionResponse`
+   - `LeccionContenido`, `LeccionConContenido`
+
+5. Crear `backend/app/schemas/quiz.py`
+   - `QuizBase`, `QuizCreate`, `Quiz`, `QuizResponse`
+   - `PreguntaBase`, `PreguntaCreate`, `Pregunta`, `PreguntaResponse`
+   - `OpcionBase`, `OpcionCreate`, `Opcion`, `OpcionResponse`
+   - `PreguntaConOpciones` (pregunta con sus opciones)
+
+6. Crear `backend/app/schemas/examen_final.py`
+   - `ExamenFinalBase`, `ExamenFinalCreate`, `ExamenFinal`, `ExamenFinalResponse`
+
+7. Crear `backend/app/schemas/inscripcion.py`
+   - `InscripcionCursoBase`, `InscripcionCursoCreate`, `InscripcionCurso`, `InscripcionCursoResponse`
+   - `EstadoInscripcion` enum
+
+8. Crear `backend/app/schemas/intento.py`
+   - `IntentoBase`, `IntentoCreate`, `Intento`, `IntentoResponse`
+   - `IntentoPregunta`, `RespuestaBase`, `RespuestaCreate`, `Respuesta`
+   - `IntentoSubmission` (para enviar respuestas)
+   - `IntentoResult` (resultado del intento)
+
+9. Crear `backend/app/schemas/certificado.py`
+   - `CertificadoBase`, `Certificado`, `CertificadoResponse`
+   - `CertificadoDownload` (con URL prefirmada)
+
+10. Crear `backend/app/schemas/progress.py`
+    - `ProgressResponse` (progreso en curso)
+    - `ProgressComparison` (comparación con otros estudiantes)
+
+11. Crear `backend/app/schemas/foro.py`
+    - `ForoComentarioBase`, `ForoComentarioCreate`, `ForoComentario`, `ForoComentarioResponse`
+
+**Archivos a crear**:
+- `backend/app/schemas/__init__.py`
+- `backend/app/schemas/usuario.py`
+- `backend/app/schemas/curso.py`
+- `backend/app/schemas/modulo.py`
+- `backend/app/schemas/leccion.py`
+- `backend/app/schemas/quiz.py`
+- `backend/app/schemas/examen_final.py`
+- `backend/app/schemas/inscripcion.py`
+- `backend/app/schemas/intento.py`
+- `backend/app/schemas/certificado.py`
+- `backend/app/schemas/progress.py`
+- `backend/app/schemas/foro.py`
+
+---
+
+### 🔄 Fase 4: Endpoints Core - Usuarios, Módulos y Cursos
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Endpoints para gestión de usuarios
+- Endpoints para listar y obtener módulos
+- Endpoints para listar y obtener cursos (materias)
+- Endpoints para guías de estudio
+
+**Tareas**:
+
+1. Crear `backend/app/routes/usuarios.py`
+   - `GET /api/usuarios/me` - Obtener perfil del usuario autenticado
+   - `GET /api/usuarios/{usuario_id}` - Obtener usuario (admin/coordinador)
+   - `PUT /api/usuarios/me` - Actualizar perfil propio
+   - `GET /api/usuarios` - Listar usuarios (admin)
+
+2. Crear `backend/app/routes/modulos.py`
+   - `GET /api/modulos` - Listar módulos públicos
+   - `GET /api/modulos/{modulo_id}` - Obtener módulo con sus cursos
+   - `POST /api/modulos` - Crear módulo (admin)
+   - `PUT /api/modulos/{modulo_id}` - Actualizar módulo (admin)
+
+3. Crear `backend/app/routes/cursos.py`
+   - `GET /api/cursos` - Listar cursos (materias) públicos
+   - `GET /api/cursos/{curso_id}` - Obtener curso con detalles
+   - `GET /api/cursos/{curso_id}/guias-estudio` - Obtener guías de estudio
+   - `POST /api/cursos` - Crear curso (admin)
+   - `PUT /api/cursos/{curso_id}` - Actualizar curso (admin)
+
+4. Crear servicios:
+   - `backend/app/services/usuario_service.py`
+   - `backend/app/services/modulo_service.py`
+   - `backend/app/services/curso_service.py`
+
+**Archivos a crear**:
+- `backend/app/routes/__init__.py`
+- `backend/app/routes/usuarios.py`
+- `backend/app/routes/modulos.py`
+- `backend/app/routes/cursos.py`
+- `backend/app/services/__init__.py`
+- `backend/app/services/usuario_service.py`
+- `backend/app/services/modulo_service.py`
+- `backend/app/services/curso_service.py`
+
+---
+
+### 🔄 Fase 5: Endpoints de Contenido - Lecciones
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Endpoints para listar y obtener lecciones
+- Endpoints para contenido de lecciones
+- Validación de acceso según inscripción
+
+**Tareas**:
+
+1. Crear `backend/app/routes/lecciones.py`
+   - `GET /api/modulos/{modulo_id}/lecciones` - Listar lecciones del módulo
+   - `GET /api/lecciones/{leccion_id}` - Obtener lección con contenido
+   - `GET /api/lecciones/{leccion_id}/contenido` - Obtener contenido de lección
+   - `POST /api/lecciones` - Crear lección (admin)
+   - `PUT /api/lecciones/{leccion_id}` - Actualizar lección (admin)
+
+2. Crear servicio:
+   - `backend/app/services/leccion_service.py`
+   - Validar que usuario esté inscrito en curso del módulo
+   - Validar fechas del módulo (contenido disponible)
+
+**Archivos a crear**:
+- `backend/app/routes/lecciones.py`
+- `backend/app/services/leccion_service.py`
+
+---
+
+### 🔄 Fase 6: Endpoints de Evaluación - Quizzes y Exámenes Finales
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Endpoints para obtener quizzes
+- Endpoints para obtener exámenes finales
+- Endpoints para iniciar y enviar intentos
+- Cálculo de puntajes y resultados
+
+**Tareas**:
+
+1. Crear `backend/app/routes/quizzes.py`
+   - `GET /api/lecciones/{leccion_id}/quiz` - Obtener quiz de lección
+   - `GET /api/quizzes/{quiz_id}` - Obtener quiz con preguntas
+   - `POST /api/quizzes/{quiz_id}/iniciar` - Iniciar intento de quiz
+   - `POST /api/quizzes/{quiz_id}/enviar` - Enviar respuestas del quiz
+   - `GET /api/quizzes/{quiz_id}/intentos` - Obtener historial de intentos
+
+2. Crear `backend/app/routes/examenes_finales.py`
+   - `GET /api/cursos/{curso_id}/examen-final` - Obtener examen final del curso
+   - `GET /api/examenes-finales/{examen_final_id}` - Obtener examen con preguntas
+   - `POST /api/examenes-finales/{examen_final_id}/iniciar` - Iniciar intento
+   - `POST /api/examenes-finales/{examen_final_id}/enviar` - Enviar respuestas
+   - `GET /api/examenes-finales/{examen_final_id}/intentos` - Historial de intentos
+
+3. Crear servicios:
+   - `backend/app/services/quiz_service.py`
+     - Validar máximo intentos (usar regla_acreditacion)
+     - Validar prerrequisitos (todos los quizzes aprobados para examen final)
+     - Calcular puntaje según tipo de pregunta
+     - Determinar si aprobó (usar min_score_aprobatorio)
+   - `backend/app/services/examen_final_service.py`
+     - Similar a quiz_service pero para exámenes finales
+     - Validar que todos los quizzes estén aprobados
+
+4. Lógica de cálculo:
+   - Opción múltiple: puntos si es correcta, penalización si está configurada
+   - Verdadero/Falso: comparar con respuesta correcta
+   - Pregunta abierta: requiere evaluación manual (puntos = NULL)
+
+**Archivos a crear**:
+- `backend/app/routes/quizzes.py`
+- `backend/app/routes/examenes_finales.py`
+- `backend/app/services/quiz_service.py`
+- `backend/app/services/examen_final_service.py`
+
+---
+
+### 🔄 Fase 7: Endpoints de Inscripción y Progreso
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Endpoints para inscribirse a cursos
+- Endpoints para consultar progreso
+- Endpoints para comparar progreso con otros estudiantes
+
+**Tareas**:
+
+1. Crear `backend/app/routes/inscripciones.py`
+   - `POST /api/inscripciones` - Inscribirse a un curso
+   - `GET /api/inscripciones` - Listar inscripciones del usuario
+   - `GET /api/inscripciones/{inscripcion_id}` - Obtener detalles de inscripción
+   - `PUT /api/inscripciones/{inscripcion_id}/pausar` - Pausar inscripción
+   - `PUT /api/inscripciones/{inscripcion_id}/reanudar` - Reanudar inscripción
+
+2. Crear `backend/app/routes/progreso.py`
+   - `GET /api/progreso` - Progreso general del usuario
+   - `GET /api/progreso/cursos/{curso_id}` - Progreso en curso específico
+   - `GET /api/progreso/modulos/{modulo_id}` - Progreso en módulo
+   - `GET /api/progreso/cursos/{curso_id}/comparacion` - Comparar con otros estudiantes
+
+3. Crear servicios:
+   - `backend/app/services/inscripcion_service.py`
+     - Validar que curso esté disponible
+     - Crear inscripción con estado ACTIVA
+     - Validar transiciones de estado (usar triggers de BD)
+   - `backend/app/services/progreso_service.py`
+     - Calcular progreso basado en lecciones completadas
+     - Calcular progreso basado en quizzes aprobados
+     - Usar vista `inscripcion_modulo_calculada` para módulos
+
+**Archivos a crear**:
+- `backend/app/routes/inscripciones.py`
+- `backend/app/routes/progreso.py`
+- `backend/app/services/inscripcion_service.py`
+- `backend/app/services/progreso_service.py`
+
+---
+
+### 🔄 Fase 8: Endpoints de Certificados
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Endpoints para obtener certificados
+- Endpoints para descargar certificados
+- Generación automática de certificados al acreditar
+
+**Tareas**:
+
+1. Crear `backend/app/routes/certificados.py`
+   - `GET /api/certificados` - Listar certificados del usuario
+   - `GET /api/certificados/inscripciones/{inscripcion_id}` - Obtener certificado de inscripción
+   - `GET /api/certificados/{certificado_id}/descargar` - Descargar certificado (PDF desde S3)
+   - `GET /api/certificados/{certificado_id}/verificar` - Verificar certificado por hash
+
+2. Integrar con servicio de certificados:
+   - Generar certificado cuando `inscripcion_curso.acreditado = TRUE`
+   - Usar trigger de BD o lógica en servicio
+   - Subir PDF a S3
+   - Guardar registro en tabla `certificado`
+
+3. Mejorar `backend/app/services/certificate_service.py`:
+   - Generar PDF con datos del usuario y curso
+   - Incluir folio y hash de verificación
+   - Template profesional del certificado
+
+**Archivos a crear**:
+- `backend/app/routes/certificados.py`
+- Actualizar `backend/app/services/certificate_service.py`
+
+---
+
+### 🔄 Fase 9: Endpoints de Interacción - Foro y Preferencias
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Endpoints para comentarios en foro
+- Endpoints para preferencias de notificaciones
+
+**Tareas**:
+
+1. Crear `backend/app/routes/foro.py`
+   - `GET /api/foro/cursos/{curso_id}/lecciones/{leccion_id}/comentarios` - Listar comentarios
+   - `POST /api/foro/cursos/{curso_id}/lecciones/{leccion_id}/comentarios` - Crear comentario
+   - `PUT /api/foro/comentarios/{comentario_id}` - Actualizar comentario propio
+   - `DELETE /api/foro/comentarios/{comentario_id}` - Eliminar comentario propio
+
+2. Crear `backend/app/routes/preferencias.py`
+   - `GET /api/preferencias` - Obtener preferencias del usuario
+   - `PUT /api/preferencias` - Actualizar preferencias
+
+3. Crear servicios:
+   - `backend/app/services/foro_service.py`
+     - Validar que usuario esté inscrito en curso
+   - `backend/app/services/preferencia_service.py`
+
+**Archivos a crear**:
+- `backend/app/routes/foro.py`
+- `backend/app/routes/preferencias.py`
+- `backend/app/services/foro_service.py`
+- `backend/app/services/preferencia_service.py`
+
+---
+
+### 🔄 Fase 10: Integración RLS y Seguridad
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Integrar RLS con autenticación Cognito
+- Configurar contexto de usuario en sesiones de BD
+- Validar políticas RLS en aplicación
+
+**Tareas**:
+
+1. Crear `backend/app/database/rls.py`
+   - Función `set_current_cognito_user_id(db: Session, cognito_user_id: str)` para establecer variable de sesión
+   - Función `clear_current_cognito_user_id(db: Session)` para limpiar variable de sesión
+   - Integrar con `get_current_user()` de auth para obtener `cognito_user_id` del JWT
+
+2. Actualizar `backend/app/database/session.py`
+   - Modificar `get_db()` dependency para establecer `app.current_cognito_user_id` automáticamente
+   - Ejecutar `SET app.current_cognito_user_id = 'cognito_user_id'` al crear sesión
+   - Obtener `cognito_user_id` del token JWT en el contexto de la request
+   - Limpiar variable de sesión al cerrar (evento `on_exit` del dependency)
+
+3. Actualizar endpoints para usar RLS:
+   - Remover filtros manuales de `usuario_id` donde RLS ya los aplica automáticamente
+   - Los queries automáticamente filtrarán según políticas RLS
+   - Para contenido público, RLS permite acceso si `publicado = TRUE`
+   - Los admins tienen acceso completo automáticamente
+
+4. Validar políticas RLS:
+   - Usuarios solo ven sus propios datos (inscripciones, intentos, certificados, preferencias)
+   - Contenido público visible para todos si `publicado = TRUE` (curso, modulo, leccion, quiz, examen_final)
+   - Administradores tienen acceso completo (función `is_admin()`)
+   - Foro: usuarios ven comentarios de materias donde están inscritos
+
+5. Testing de seguridad:
+   - Verificar que usuarios no pueden acceder a datos de otros
+   - Verificar que RLS funciona correctamente en queries SQLAlchemy
+   - Probar acceso a contenido público vs privado
+   - Verificar que admins tienen acceso completo
+
+**Archivos a crear**:
+- `backend/app/database/rls.py`
+- Actualizar `backend/app/database/session.py`
+
+**Notas de implementación**:
+- Variable de sesión: `SET app.current_cognito_user_id = 'cognito_user_id_from_jwt'`
+- La función `get_current_user_id()` de BD obtiene `usuario_id` desde esta variable
+- La función `is_admin()` verifica rol ADMIN del usuario actual
+- RLS se aplica automáticamente a nivel de base de datos, no requiere código adicional en queries
+
+---
+
+### 🔄 Fase 11: Endpoints de Administración
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Endpoints para gestión administrativa
+- Endpoints para reglas de acreditación
+- Endpoints para permitir nuevos intentos
+
+**Tareas**:
+
+1. Crear `backend/app/routes/admin.py`
+   - `GET /api/admin/usuarios` - Listar todos los usuarios
+   - `PUT /api/admin/usuarios/{usuario_id}/roles` - Asignar roles
+   - `GET /api/admin/inscripciones` - Listar todas las inscripciones
+   - `PUT /api/admin/inscripciones/{inscripcion_id}/estado` - Cambiar estado
+   - `GET /api/admin/intentos` - Listar intentos
+   - `PUT /api/admin/intentos/{intento_id}/permitir-nuevo` - Permitir nuevo intento
+   - `GET /api/admin/reglas-acreditacion` - Listar reglas
+   - `POST /api/admin/reglas-acreditacion` - Crear regla
+   - `PUT /api/admin/reglas-acreditacion/{regla_id}` - Actualizar regla
+
+2. Crear servicios:
+   - `backend/app/services/admin_service.py`
+   - `backend/app/services/regla_acreditacion_service.py`
+
+**Archivos a crear**:
+- `backend/app/routes/admin.py`
+- `backend/app/services/admin_service.py`
+- `backend/app/services/regla_acreditacion_service.py`
+
+---
+
+### 🔄 Fase 12: Tests y Optimización
+
+**Estado**: Pendiente
+
+**Objetivos**:
+- Tests unitarios de servicios
+- Tests de integración de endpoints
+- Optimización de queries
+- Documentación de API
+
+**Tareas**:
+
+1. Tests unitarios:
+   - `tests/test_services/test_quiz_service.py`
+   - `tests/test_services/test_examen_final_service.py`
+   - `tests/test_services/test_certificate_service.py`
+   - `tests/test_utils/test_auth.py`
+   - `tests/test_utils/test_roles.py`
+
+2. Tests de integración:
+   - `tests/test_routes/test_quizzes.py`
+   - `tests/test_routes/test_inscripciones.py`
+   - `tests/test_routes/test_certificados.py`
+
+3. Optimización:
+   - Revisar queries N+1
+   - Agregar eager loading donde sea necesario
+   - Optimizar índices si es necesario
+
+4. Documentación:
+   - Completar docstrings en todos los endpoints
+   - Agregar ejemplos en schemas
+   - Documentar reglas de negocio
+
+**Archivos a crear**:
+- `tests/__init__.py`
+- `tests/conftest.py` (fixtures)
+- `tests/test_services/`
+- `tests/test_routes/`
+- `tests/test_utils/`
+
+---
+
+## Reglas de Negocio Críticas
+
+### Evaluaciones
+- **RF-01**: Quizzes asociados a lecciones, exámenes finales asociados a materias (curso)
+- **RF-03**: Calificación mínima del 80% para aprobar (default, configurable en `regla_acreditacion.min_score_aprobatorio`)
+- **RF-03**: Máximo de 3 intentos por quiz/examen (default, configurable en `regla_acreditacion.max_intentos_quiz`)
+  - Validado por trigger `validar_max_intentos()` antes de INSERT
+- **RF-11**: Permitir recursamiento solo si `permitir_nuevo_intento = TRUE` en último intento
+  - Validado por trigger `validar_nuevo_intento_permitido()` antes de INSERT
+- Validación de tipos de respuesta según tipo de pregunta (trigger `validar_respuesta_tipo()`)
+  - ABIERTA → requiere `respuesta_texto`
+  - OPCION_MULTIPLE → requiere `opcion_id`
+  - VERDADERO_FALSO → requiere `respuesta_bool`
+
+### Acreditación
+- **RF-04**: Generación automática de certificado al acreditar (implementar en aplicación)
+- Acreditación requiere examen final aprobado con score >= `min_score_aprobatorio`
+  - Validado por trigger `validar_acreditacion_curso()` antes de INSERT/UPDATE
+  - Al marcar `acreditado = TRUE`, el trigger:
+    - Verifica que existe intento aprobado del examen final con puntaje suficiente
+    - Actualiza estado a CONCLUIDA automáticamente
+    - Establece `acreditado_en` si es NULL
+- Todos los quizzes de lecciones de la materia deben estar aprobados antes del examen final
+  - Validado por trigger `validar_examen_final_prerequisitos()` antes de INSERT en intento
+
+### Inscripciones
+- Un usuario solo puede tener una inscripción por materia/curso (UNIQUE `usuario_id, curso_id`)
+- Estados válidos: ACTIVA → PAUSADA → CONCLUIDA/REPROBADA
+  - Validado por trigger `validar_transicion_estado_inscripcion()` en UPDATE
+- Una inscripción CONCLUIDA no puede cambiar de estado
+- Una inscripción REPROBADA solo puede mantenerse o concluirse
+- El trigger actualiza `fecha_conclusion` automáticamente al concluir/reprobar
+- Validación de que quiz/examen pertenezca a la materia de la inscripción (trigger `validar_intento_inscripcion()`)
+
+### Estructura de Contenido
+- Las lecciones pertenecen al **módulo**, no directamente al curso/materia
+- Las lecciones se asocian a materias a través de `modulo_curso` (relación módulo → materia)
+- Las fechas del módulo (`fecha_inicio`, `fecha_fin`) controlan cuándo el contenido está disponible
+- Las lecciones NO tienen fechas propias
+- Una inscripción es a una **materia (curso)**, no a un módulo completo
+- El progreso a nivel de módulo se calcula en la vista `inscripcion_modulo_calculada`
+
+### Seguridad
+- **RF-12**: Validar roles (estudiante, coordinador, admin) en endpoints protegidos
+- RLS aplicado a nivel de base de datos en todas las tablas
+- Usuarios solo ven sus propios datos (excepto contenido público con `publicado = TRUE`)
+- RLS usa variable de sesión `app.current_cognito_user_id` para identificar usuario
+- Función `get_current_user_id()` obtiene `usuario_id` desde `cognito_user_id`
+- Función `is_admin()` verifica si el usuario tiene rol ADMIN
+
+---
+
+## Estructura Final del Proyecto
 
 ```
 backend/
 ├── app/
+│   ├── __init__.py
 │   ├── main.py
-│   ├── routes/
-│   ├── services/
+│   ├── config.py
 │   ├── database/
+│   │   ├── __init__.py
+│   │   ├── session.py
+│   │   ├── models.py
+│   │   ├── enums.py
+│   │   └── rls.py
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── usuarios.py
+│   │   ├── modulos.py
+│   │   ├── cursos.py
+│   │   ├── lecciones.py
+│   │   ├── quizzes.py
+│   │   ├── examenes_finales.py
+│   │   ├── inscripciones.py
+│   │   ├── progreso.py
+│   │   ├── certificados.py
+│   │   ├── foro.py
+│   │   ├── preferencias.py
+│   │   └── admin.py
 │   ├── schemas/
+│   │   ├── __init__.py
+│   │   ├── usuario.py
+│   │   ├── curso.py
+│   │   ├── modulo.py
+│   │   ├── leccion.py
+│   │   ├── quiz.py
+│   │   ├── examen_final.py
+│   │   ├── inscripcion.py
+│   │   ├── intento.py
+│   │   ├── certificado.py
+│   │   ├── progress.py
+│   │   └── foro.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── s3_service.py
+│   │   ├── certificate_service.py
+│   │   ├── usuario_service.py
+│   │   ├── modulo_service.py
+│   │   ├── curso_service.py
+│   │   ├── leccion_service.py
+│   │   ├── quiz_service.py
+│   │   ├── examen_final_service.py
+│   │   ├── inscripcion_service.py
+│   │   ├── progreso_service.py
+│   │   ├── foro_service.py
+│   │   ├── preferencia_service.py
+│   │   ├── admin_service.py
+│   │   └── regla_acreditacion_service.py
 │   └── utils/
+│       ├── __init__.py
+│       ├── auth.py
+│       ├── roles.py
+│       ├── exceptions.py
+│       ├── validators.py
+│       └── helpers.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_services/
+│   ├── test_routes/
+│   └── test_utils/
+├── alembic/
+│   ├── versions/
+│   ├── env.py
+│   └── script.py.mako
 ├── Dockerfile
 ├── requirements.txt
-└── docker-compose.yml
+└── alembic.ini
 ```
 
-### Dockerfile
-
-Crear `backend/Dockerfile`:
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY ./app /app
-
-EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### requirements.txt
-
-```txt
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-psycopg2-binary==2.9.9
-python-jose[cryptography]==3.3.0
-boto3==1.29.7
-reportlab==4.0.7
-pydantic==2.5.0
-pydantic-settings==2.1.0
-sqlalchemy==2.0.23
-alembic==1.12.1
-pytest==7.4.3
-pytest-asyncio==0.21.1
-httpx==0.25.2
-```
-
-### docker-compose.yml (Raíz del proyecto)
-
-```yaml
-version: '3.8'
-
-services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: ebs_user
-      POSTGRES_PASSWORD: ebs_password
-      POSTGRES_DB: ebs_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ebs_user"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql://ebs_user:ebs_password@db:5432/ebs_db
-      AWS_REGION: us-east-1
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./backend/app:/app
-
-volumes:
-  postgres_data:
-```
-
-### Tarea Crítica: Definición del Contrato API
-
-Crear endpoints iniciales con modelos Pydantic (sin lógica de negocio):
-
-#### app/schemas/course.py
-
-```python
-from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
-
-class CourseBase(BaseModel):
-    name: str
-    description: str
-
-class CourseCreate(CourseBase):
-    pass
-
-class Course(CourseBase):
-    id: int
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class StudyGuideResponse(BaseModel):
-    course_id: int
-    file_name: str
-    presigned_url: str
-    expires_in: int
-```
-
-#### app/schemas/exam.py
-
-```python
-from pydantic import BaseModel
-from typing import List, Dict
-from datetime import datetime
-
-class Question(BaseModel):
-    id: int
-    question_text: str
-    options: List[str]
-    correct_answer: int
-
-class ExamResponse(BaseModel):
-    id: int
-    course_id: int
-    questions: List[Question]
-    time_limit_minutes: Optional[int] = None
-
-class ExamSubmission(BaseModel):
-    exam_id: int
-    answers: Dict[int, int]
-
-class ExamResult(BaseModel):
-    exam_id: int
-    score: float
-    percentage: float
-    passed: bool
-    attempts_remaining: int
-    certificate_url: Optional[str] = None
-```
-
-#### app/schemas/user.py
-
-```python
-from pydantic import BaseModel
-from enum import Enum
-
-class UserRole(str, Enum):
-    STUDENT = "student"
-    COORDINATOR = "coordinator"
-    ADMIN = "admin"
-
-class UserBase(BaseModel):
-    email: str
-    role: UserRole
-
-class User(UserBase):
-    id: int
-    cognito_user_id: str
-    
-    class Config:
-        from_attributes = True
-```
-
-#### app/schemas/progress.py
-
-```python
-from pydantic import BaseModel
-from typing import Optional
-
-class ProgressResponse(BaseModel):
-    user_id: int
-    course_id: int
-    progress_percentage: float
-    completed_modules: int
-    total_modules: int
-    last_accessed: Optional[str] = None
-
-class ProgressComparison(BaseModel):
-    user_id: int
-    course_id: int
-    user_percentage: float
-    average_percentage: float
-    rank: int
-    total_students: int
-```
-
-#### app/routes/courses.py
-
-```python
-from fastapi import APIRouter, Depends, HTTPException
-from app.schemas.course import Course, CourseCreate, StudyGuideResponse
-from typing import List
-
-router = APIRouter(prefix="/api/courses", tags=["courses"])
-
-@router.get("/", response_model=List[Course])
-async def get_courses():
-    pass
-
-@router.get("/{course_id}", response_model=Course)
-async def get_course(course_id: int):
-    pass
-
-@router.get("/{course_id}/study-guides", response_model=List[StudyGuideResponse])
-async def get_study_guides(course_id: int):
-    pass
-```
-
-#### app/routes/exams.py
-
-```python
-from fastapi import APIRouter, Depends, HTTPException
-from app.schemas.exam import ExamResponse, ExamSubmission, ExamResult
-from typing import List
-
-router = APIRouter(prefix="/api/exams", tags=["exams"])
-
-@router.get("/course/{course_id}", response_model=ExamResponse)
-async def get_exam(course_id: int):
-    pass
-
-@router.post("/submit", response_model=ExamResult)
-async def submit_exam(submission: ExamSubmission):
-    pass
-
-@router.post("/{exam_id}/retake")
-async def retake_exam(exam_id: int):
-    pass
-```
-
-#### app/routes/progress.py
-
-```python
-from fastapi import APIRouter, Depends
-from app.schemas.progress import ProgressResponse, ProgressComparison
-from typing import List
-
-router = APIRouter(prefix="/api/progress", tags=["progress"])
-
-@router.get("/user/{user_id}", response_model=List[ProgressResponse])
-async def get_user_progress(user_id: int):
-    pass
-
-@router.get("/user/{user_id}/course/{course_id}/comparison", response_model=ProgressComparison)
-async def get_progress_comparison(user_id: int, course_id: int):
-    pass
-```
-
-#### app/routes/certificates.py
-
-```python
-from fastapi import APIRouter, Depends
-from fastapi.responses import FileResponse
-from app.schemas.certificate import CertificateResponse
-
-router = APIRouter(prefix="/api/certificates", tags=["certificates"])
-
-@router.get("/user/{user_id}/course/{course_id}", response_model=CertificateResponse)
-async def get_certificate(user_id: int, course_id: int):
-    pass
-
-@router.get("/user/{user_id}/course/{course_id}/download")
-async def download_certificate(user_id: int, course_id: int):
-    pass
-```
-
-#### app/main.py
-
-```python
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.routes import courses, exams, progress, certificates
-
-app = FastAPI(
-    title="EBS API",
-    description="API para Plataforma Digital Escuela Bíblica Salem",
-    version="1.0.0"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(courses.router)
-app.include_router(exams.router)
-app.include_router(progress.router)
-app.include_router(certificates.router)
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
-```
-
-### Sincronización
-
-1. Ejecutar `docker-compose up --build`
-2. Verificar que el servicio esté disponible en `http://localhost:8000`
-3. Acceder a la documentación automática en `http://localhost:8000/docs`
-4. **Compartir la URL `/docs` con el desarrollador de Frontend** (este es el contrato oficial)
-
-## Fase 1: Desarrollo (Implementación de API)
-
-### Autenticación con Cognito
-
-#### app/utils/auth.py
-
-```python
-from jose import JWTError, jwt
-from jose.utils import base64url_decode
-import json
-import requests
-from fastapi import HTTPException, Security
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Optional
-import os
-
-security = HTTPBearer()
-
-COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID")
-COGNITO_REGION = os.getenv("AWS_REGION", "us-east-1")
-COGNITO_ISSUER = f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}"
-
-def get_jwks():
-    jwks_url = f"{COGNITO_ISSUER}/.well-known/jwks.json"
-    response = requests.get(jwks_url)
-    return response.json()
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
-    token = credentials.credentials
-    
-    try:
-        unverified_header = jwt.get_unverified_header(token)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token header")
-    
-    jwks = get_jwks()
-    rsa_key = {}
-    for key in jwks["keys"]:
-        if key["kid"] == unverified_header["kid"]:
-            rsa_key = {
-                "kty": key["kty"],
-                "kid": key["kid"],
-                "use": key["use"],
-                "n": key["n"],
-                "e": key["e"]
-            }
-    
-    if not rsa_key:
-        raise HTTPException(status_code=401, detail="Unable to find appropriate key")
-    
-    try:
-        payload = jwt.decode(
-            token,
-            rsa_key,
-            algorithms=["RS256"],
-            audience=None,
-            issuer=COGNITO_ISSUER,
-            options={"verify_signature": True, "verify_aud": False}
-        )
-        return payload
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
-    return verify_token(credentials)
-```
-
-### Endpoints Core: Cursos (RF-02, RF-05)
-
-#### app/services/s3_service.py
-
-```python
-import boto3
-from botocore.config import Config
-import os
-from datetime import timedelta
-
-s3_client = boto3.client(
-    's3',
-    region_name=os.getenv("AWS_REGION", "us-east-1"),
-    config=Config(signature_version='s3v4')
-)
-
-BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-
-def generate_presigned_url(file_key: str, expiration: int = 3600) -> str:
-    url = s3_client.generate_presigned_url(
-        'get_object',
-        Params={'Bucket': BUCKET_NAME, 'Key': file_key},
-        ExpiresIn=expiration
-    )
-    return url
-```
-
-#### app/services/course_service.py
-
-```python
-from sqlalchemy.orm import Session
-from app.models.course import Course, StudyGuide
-from app.services.s3_service import generate_presigned_url
-from app.schemas.course import StudyGuideResponse
-
-def get_courses(db: Session):
-    return db.query(Course).all()
-
-def get_study_guides(db: Session, course_id: int) -> list[StudyGuideResponse]:
-    guides = db.query(StudyGuide).filter(StudyGuide.course_id == course_id).all()
-    return [
-        StudyGuideResponse(
-            course_id=guide.course_id,
-            file_name=guide.file_name,
-            presigned_url=generate_presigned_url(guide.s3_key),
-            expires_in=3600
-        )
-        for guide in guides
-    ]
-```
-
-### Endpoints de Evaluación (RF-01, RF-03, RF-11)
-
-#### app/services/exam_service.py
-
-```python
-from sqlalchemy.orm import Session
-from app.models.exam import Exam, ExamAttempt, Question
-from app.schemas.exam import ExamSubmission, ExamResult
-from typing import Dict
-
-MIN_PASSING_SCORE = 80.0
-MAX_ATTEMPTS = 3
-
-def calculate_score(answers: Dict[int, int], questions: list[Question]) -> float:
-    correct = 0
-    total = len(questions)
-    
-    for question in questions:
-        if answers.get(question.id) == question.correct_answer:
-            correct += 1
-    
-    return (correct / total) * 100
-
-def submit_exam(db: Session, user_id: int, submission: ExamSubmission) -> ExamResult:
-    exam = db.query(Exam).filter(Exam.id == submission.exam_id).first()
-    if not exam:
-        raise HTTPException(status_code=404, detail="Exam not found")
-    
-    attempts = db.query(ExamAttempt).filter(
-        ExamAttempt.user_id == user_id,
-        ExamAttempt.exam_id == submission.exam_id
-    ).count()
-    
-    if attempts >= MAX_ATTEMPTS:
-        raise HTTPException(status_code=400, detail="Maximum attempts reached")
-    
-    questions = db.query(Question).filter(Question.exam_id == submission.exam_id).all()
-    score = calculate_score(submission.answers, questions)
-    passed = score >= MIN_PASSING_SCORE
-    
-    attempt = ExamAttempt(
-        user_id=user_id,
-        exam_id=submission.exam_id,
-        score=score,
-        answers=submission.answers,
-        passed=passed
-    )
-    db.add(attempt)
-    db.commit()
-    
-    attempts_remaining = MAX_ATTEMPTS - (attempts + 1)
-    certificate_url = None
-    
-    if passed:
-        certificate_url = generate_certificate(user_id, exam.course_id)
-    
-    return ExamResult(
-        exam_id=submission.exam_id,
-        score=score,
-        percentage=score,
-        passed=passed,
-        attempts_remaining=attempts_remaining,
-        certificate_url=certificate_url
-    )
-
-def retake_exam(db: Session, user_id: int, exam_id: int):
-    attempts = db.query(ExamAttempt).filter(
-        ExamAttempt.user_id == user_id,
-        ExamAttempt.exam_id == exam_id
-    ).count()
-    
-    if attempts < MAX_ATTEMPTS:
-        last_attempt = db.query(ExamAttempt).filter(
-            ExamAttempt.user_id == user_id,
-            ExamAttempt.exam_id == exam_id
-        ).order_by(ExamAttempt.created_at.desc()).first()
-        
-        if last_attempt and not last_attempt.passed:
-            return {"message": "Retake allowed", "attempts_remaining": MAX_ATTEMPTS - attempts}
-    
-    raise HTTPException(status_code=400, detail="Retake not allowed")
-```
-
-### Endpoints de Certificación (RF-04)
-
-#### app/services/certificate_service.py
-
-```python
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import inch
-import boto3
-from datetime import datetime
-import os
-
-def generate_certificate(user_id: int, course_id: int) -> str:
-    s3_client = boto3.client('s3')
-    bucket_name = os.getenv("S3_BUCKET_NAME")
-    
-    filename = f"certificates/{user_id}_{course_id}_{datetime.now().timestamp()}.pdf"
-    local_path = f"/tmp/{filename}"
-    
-    c = canvas.Canvas(local_path, pagesize=letter)
-    width, height = letter
-    
-    c.setFont("Helvetica-Bold", 24)
-    c.drawCentredString(width / 2, height - 2 * inch, "CERTIFICADO DE APROBACIÓN")
-    
-    c.setFont("Helvetica", 16)
-    c.drawCentredString(width / 2, height - 3 * inch, f"Curso ID: {course_id}")
-    c.drawCentredString(width / 2, height - 3.5 * inch, f"Usuario ID: {user_id}")
-    c.drawCentredString(width / 2, height - 4 * inch, f"Fecha: {datetime.now().strftime('%Y-%m-%d')}")
-    
-    c.save()
-    
-    s3_client.upload_file(local_path, bucket_name, filename)
-    os.remove(local_path)
-    
-    return filename
-```
-
-### Endpoints de Roles (RF-12)
-
-#### app/utils/roles.py
-
-```python
-from fastapi import HTTPException
-from app.utils.auth import get_current_user
-from app.schemas.user import UserRole
-
-def require_role(allowed_roles: list[UserRole]):
-    def role_checker(current_user: dict = get_current_user):
-        user_role = current_user.get("cognito:groups", [])
-        if not any(role in user_role for role in allowed_roles):
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
-        return current_user
-    return role_checker
-```
-
-#### Uso en rutas
-
-```python
-from app.utils.roles import require_role
-from app.schemas.user import UserRole
-
-@router.get("/admin/users")
-async def get_all_users(current_user = Depends(require_role([UserRole.ADMIN]))):
-    pass
-```
-
-## Fase 2: Integración y Despliegue (Staging)
-
-### Despliegue en ECS Fargate
-
-1. Construir imagen Docker: `docker build -t ebs-backend:latest ./backend`
-2. Publicar imagen en ECR (Elastic Container Registry)
-3. Configurar servicio ECS Fargate con:
-   - Task Definition que use la imagen
-   - Variables de entorno para Cognito, S3, RDS
-   - Health check en `/health`
-4. Configurar Application Load Balancer con HTTPS
-5. **Proveer URL del API de staging al desarrollador de Frontend**
-
-### Variables de Entorno en Producción
-
-```env
-DATABASE_URL=postgresql://user:pass@rds-endpoint:5432/ebs_db
-COGNITO_USER_POOL_ID=us-east-1_xxxxx
-COGNITO_CLIENT_ID=xxxxx
-AWS_REGION=us-east-1
-S3_BUCKET_NAME=ebs-storage
-```
-
-## Fase 3: Pruebas y Producción
-
-### Pruebas Unitarias
-
-#### tests/test_exam_service.py
-
-```python
-import pytest
-from app.services.exam_service import calculate_score, MIN_PASSING_SCORE, MAX_ATTEMPTS
-
-def test_calculate_score():
-    questions = [
-        Question(id=1, correct_answer=0),
-        Question(id=2, correct_answer=1),
-    ]
-    answers = {1: 0, 2: 1}
-    score = calculate_score(answers, questions)
-    assert score == 100.0
-
-def test_min_passing_score():
-    assert MIN_PASSING_SCORE == 80.0
-
-def test_max_attempts():
-    assert MAX_ATTEMPTS == 3
-```
-
-### Ejecutar Pruebas en Docker
-
-```dockerfile
-# Agregar a Dockerfile para tests
-RUN pip install pytest pytest-asyncio httpx
-
-CMD ["pytest", "tests/", "-v"]
-```
-
-### Seguridad
-
-1. Validar todos los endpoints protegidos con `get_current_user`
-2. Verificar flujos de Cognito (login, registro, recuperación de contraseña)
-3. Validar CORS en producción
-4. Implementar rate limiting
-5. Validar entrada con Pydantic en todos los endpoints
-6. Usar conexiones SSL para RDS
-7. Rotar credenciales de AWS periódicamente
-
-### Reglas de Negocio Críticas
-
-- **RF-03**: Calificación mínima del 80% para aprobar
-- **RF-03**: Máximo de 3 intentos por examen
-- **RF-04**: Generación automática de certificado al aprobar
-- **RF-11**: Permitir recursamiento si no se aprueba
-- **RF-12**: Validar roles (Alumno, Coordinador, Admin) en endpoints protegidos
-
+---
+
+## Próximos Pasos Inmediatos
+
+1. ✅ **Fase 1**: Autenticación y Servicios Externos - **COMPLETADO**
+2. ✅ **Fase 2**: Modelos SQLAlchemy y conexión a BD - **COMPLETADO**
+3. **Fase 3**: Crear schemas Pydantic basados en modelos
+4. **Fase 4**: Implementar endpoints core (usuarios, módulos, cursos)
+
+---
+
+## Notas de Implementación
+
+### Integración con Triggers de BD
+- Los triggers de BD validan reglas de negocio automáticamente en el servidor
+- La aplicación debe manejar errores de triggers (excepciones de PostgreSQL)
+  - Errores comunes: máximo intentos alcanzado, prerrequisitos no cumplidos, transiciones de estado inválidas
+- No duplicar validaciones en aplicación si ya están en triggers
+  - Los triggers validan: máximo intentos, prerrequisitos examen final, transiciones estado, acreditación, tipos de respuesta
+- Algunos triggers actualizan campos automáticamente:
+  - `validar_transicion_estado_inscripcion()`: actualiza `fecha_conclusion` al concluir/reprobar
+  - `validar_acreditacion_curso()`: actualiza `estado` a CONCLUIDA y establece `acreditado_en` al acreditar
+
+### Integración con RLS
+- RLS se aplica automáticamente en queries de SQLAlchemy
+- **CRÍTICO**: Establecer `app.current_cognito_user_id` antes de cada query
+  - Variable de sesión: `SET app.current_cognito_user_id = 'cognito_user_id_from_jwt'`
+  - Establecer en middleware o dependency antes de operaciones de BD
+  - Ver Fase 10 para implementación completa
+- Las políticas RLS están definidas en `rls.init.sql`
+- Funciones helper disponibles:
+  - `get_current_user_id()`: Obtiene `usuario_id` desde `app.current_cognito_user_id`
+  - `is_admin()`: Verifica si usuario tiene rol ADMIN
+- Tablas con políticas públicas: curso, modulo, leccion, quiz, examen_final (si `publicado = TRUE`)
+- Tablas con políticas propias: usuario, inscripcion_curso, intento, certificado, foro_comentario, preferencia_notificacion
+- Tablas solo admin: rol, usuario_rol, regla_acreditacion, pregunta, opcion, pregunta_config, etc.
+
+### Estructura de Datos
+- **Curso = Materia**: La tabla `curso` representa una "Materia" en el modelo de negocio
+- **Lecciones**: Pertenecen al **módulo**, no directamente al curso/materia
+- **Asociación Lección-Materia**: A través de `modulo_curso` (módulo contiene materias, lección pertenece a módulo)
+- **Inscripciones**: Se hacen a una materia (curso), no a un módulo completo
+- **Progreso Módulo**: Se calcula en vista `inscripcion_modulo_calculada` basado en inscripciones de materias
+
+### Vistas y Cálculos
+- Usar vista `inscripcion_modulo_calculada` para progreso a nivel de módulo
+- Usar vista `respuesta_con_evaluacion` para obtener `es_correcta` y `puntos_otorgados` calculados
+- Las vistas `quiz_con_preguntas` y `examen_final_con_preguntas` incluyen conteo de preguntas
+
+### Manejo de UUIDs
+- Todos los IDs son UUID (excepto algunos campos calculados)
+- Usar `uuid.UUID` en Python, `UUID` en SQLAlchemy
+- Validar formato UUID en schemas Pydantic
+
+### Fechas y Zonas Horarias
+- Todas las fechas en BD son `TIMESTAMPTZ` (timestamp with timezone)
+- Fechas de módulo son `DATE` (solo fecha, sin hora)
+- Usar `datetime` con timezone en Python
+- Convertir a UTC antes de guardar en BD
+- Las fechas del módulo controlan disponibilidad del contenido
+
+### Índices y Optimización
+- Índices creados en claves foráneas, columnas de filtrado (`publicado`, `estado`, `resultado`)
+- Índices compuestos para consultas comunes (usuario+estado, curso+estado, etc.)
+- Índices GIN para búsqueda de texto completo (usando `pg_trgm`)
+- Índices parciales en columnas booleanas (`WHERE publicado = TRUE`)
+- Restricciones UNIQUE parciales (ej: solo un certificado válido por inscripción)

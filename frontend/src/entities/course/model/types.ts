@@ -1,90 +1,29 @@
 /**
- * Entidad: Curso
- * Un curso individual que puede pertenecer a un módulo
+ * Entidad: Curso (Materia)
+ * Nota: En la base de datos se llama "curso" pero conceptualmente representa una "Materia"
  */
-
-export type CourseStatus = 'Borrador' | 'Publicado' | 'Archivado';
-export type CourseLevel = 'Básico' | 'Intermedio' | 'Avanzado';
 
 /**
- * Curso base
+ * Curso (Materia) base
  */
-export interface Course {
-  id: number;
-  name: string;
-  description: string;
-  code: string; // Código único (ej: "CUR-001")
-  level: CourseLevel;
-  status: CourseStatus;
-  imageUrl?: string;
-  
-  // Relaciones
-  moduleId?: number; // ID del módulo al que pertenece (opcional)
-  moduleName?: string;
-  coordinatorId: number; // Coordinador responsable
-  coordinatorName?: string;
-  
-  // Contenido
-  lessons: number;
-  assignments: number;
-  exams: number;
-  estimatedDuration: string; // Duración estimada (ej: "4 semanas")
-  category: string;
-  
-  // Fechas
-  createdAt: string;
-  updatedAt: string;
-  publishedAt?: string;
-  startDate?: string;
-  endDate?: string;
-  
-  // Requisitos
-  prerequisites?: number[]; // IDs de cursos previos
-  minGradeToPass?: number; // Nota mínima para aprobar
-  
-  // Estadísticas
-  studentsEnrolled?: number;
-  studentsCompleted?: number;
-  averageGrade?: number;
-  
-  // Certificación
-  hasCertificate: boolean; // Si otorga certificado al completarlo
-  certificateTemplateId?: number;
+export interface Curso {
+  id: string; // UUID
+  titulo: string;
+  descripcion: string | null;
+  publicado: boolean;
+  creado_en: string;
+  actualizado_en: string;
 }
 
 /**
- * Curso con progreso del alumno
+ * Guía de estudio asociada a un curso
  */
-export interface CourseWithProgress extends Course {
-  progress: {
-    percentage: number;
-    lessonsCompleted: number;
-    assignmentsCompleted: number;
-    assignmentsPending: number;
-    examsCompleted: number;
-    currentLessonId?: number;
-    startDate?: string;
-    completionDate?: string;
-    grade?: number;
-  };
-}
-
-/**
- * Curso para formularios
- */
-export interface CourseFormData {
-  name: string;
-  description: string;
-  code: string;
-  level: CourseLevel;
-  status: CourseStatus;
-  imageUrl?: string;
-  moduleId?: number;
-  coordinatorId: number;
-  lessons: number;
-  estimatedDuration: string;
-  category: string;
-  prerequisites?: number[];
-  minGradeToPass?: number;
-  hasCertificate: boolean;
+export interface GuiaEstudio {
+  id: string; // UUID
+  curso_id: string;
+  titulo: string;
+  url: string | null;
+  activo: boolean;
+  creado_en: string;
+  actualizado_en: string;
 }

@@ -1,63 +1,38 @@
 /**
  * Entidad: Usuario
- * Roles: Alumno, Administrador, Coordinador
+ * Usuarios del sistema con roles y autenticación Cognito
  */
-
-export type UserRole = 'alumno' | 'administrador' | 'coordinador';
-export type UserStatus = 'Activo' | 'Inactivo' | 'Suspendido';
 
 /**
  * Usuario base
  */
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: UserRole;
-  status: UserStatus;
-  avatar?: string;
-  phone?: string;
-  registrationDate: string;
-  lastLogin?: string;
-  
-  // Estadísticas (para alumnos)
-  coursesEnrolled?: number;
-  modulesCompleted?: number;
-  certificatesEarned?: number;
-  averageGrade?: number;
+export interface Usuario {
+  id: string; // UUID
+  nombre: string;
+  apellido: string;
+  email: string; // UNIQUE
+  avatar_url: string | null;
+  cognito_user_id: string | null; // UNIQUE
+  creado_en: string;
+  actualizado_en: string;
 }
 
 /**
- * Usuario para autenticación (versión simplificada)
+ * Rol del sistema
  */
-export interface AuthUser {
-  id: number;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatar?: string;
+export interface Rol {
+  id: string; // UUID
+  nombre: string; // UNIQUE (ej: 'ADMIN', 'ESTUDIANTE', 'INSTRUCTOR')
+  creado_en: string;
+  actualizado_en: string;
 }
 
 /**
- * Usuario para formularios
+ * Relación entre usuario y rol
  */
-export interface UserFormData {
-  name: string;
-  email: string;
-  password?: string;
-  confirmPassword?: string;
-  role: UserRole;
-  status: UserStatus;
-  phone?: string;
-}
-
-/**
- * Perfil de usuario (extendido)
- */
-export interface UserProfile extends User {
-  bio?: string;
-  address?: string;
-  birthDate?: string;
-  enrolledCourses?: number[];
-  enrolledModules?: number[];
+export interface UsuarioRol {
+  id: string; // UUID
+  usuario_id: string;
+  rol_id: string;
+  asignado_en: string;
 }

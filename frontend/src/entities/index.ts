@@ -25,3 +25,30 @@ export * from './progress';
 
 // Certificate - Certificados de cursos y módulos
 export * from './certificate';
+
+// Lesson - Lecciones de módulos
+export * from './lesson';
+
+// Quiz - Cuestionarios de lecciones
+export * from './quiz';
+
+// Exam - Exámenes finales de cursos
+export * from './exam';
+
+// Question - Preguntas de quizzes y exámenes
+export * from './question';
+
+// Enrollment - Inscripciones a cursos
+export * from './enrollment';
+
+// Attempt - Intentos de quizzes y exámenes
+export * from './attempt';
+
+// Forum - Comentarios en foros
+export * from './forum';
+
+// Notification - Preferencias de notificación
+export * from './notification';
+
+// Accreditation - Reglas de acreditación
+export * from './accreditation';
