@@ -3,10 +3,10 @@ services:
     # El entrypoint.sh detecta ENVIRONMENT=development y ejecuta uvicorn con --reload automáticamente
     # No necesitamos sobrescribir el command, el entrypoint.sh lo maneja
     
-    # Volumen para hot-reload: mapea código local directamente al contenedor
-    # Esto permite que uvicorn --reload detecte cambios en el código
+    # Volumen para hot-reload: mapea SOLO el código de la app, NO el entrypoint.sh
+    # El entrypoint.sh debe estar en la imagen para evitar problemas de permisos en Windows
     volumes:
-      - ./backend:/app:rw
+      - ./backend/app:/app/app:rw
 
     # Entorno específico de desarrollo
     # El entrypoint.sh detecta esto y ejecuta: uvicorn app.main:app --reload

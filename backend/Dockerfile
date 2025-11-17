@@ -53,19 +53,36 @@ COPY --from=builder /opt/venv /opt/venv
 # Activar entorno virtual
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copiar código fuente y dar permisos
+# Copiar todo el código fuente (incluyendo entrypoint.sh)
 COPY --chown=appuser:appuser . .
 
-# Convertir saltos de línea a LF y dar permisos de ejecución al entrypoint (como root, antes de cambiar usuario)
-RUN sed -i 's/\r$//' /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh && \
-    head -1 /app/entrypoint.sh
+# Verificar y configurar entrypoint (como root, antes de cambiar usuario)
+# Convertir saltos de línea CRLF a LF (necesario en Windows)
+# Dar permisos de ejecución
+RUN echo "Verificando archivos en /app/..." && \
+    ls -la /app/ && \
+    if [ -f /app/entrypoint.sh ]; then \
+        echo "✓ entrypoint.sh encontrado, configurando..." && \
+        sed -i 's/\r$//' /app/entrypoint.sh && \
+        chmod +x /app/entrypoint.sh && \
+        chown appuser:appuser /app/entrypoint.sh && \
+        echo "✓ Entrypoint configurado correctamente" && \
+        head -1 /app/entrypoint.sh && \
+        ls -la /app/entrypoint.sh; \
+    else \
+        echo "✗ ERROR: entrypoint.sh no encontrado en /app/" && \
+        exit 1; \
+    fi
 
 # Cambiar al usuario seguro
 USER appuser
+
+# Verificar que el entrypoint es accesible como appuser
+RUN ls -la /app/entrypoint.sh && test -x /app/entrypoint.sh && echo "✓ Entrypoint verificado como appuser"
 
 # Puerto que expone el contenedor
 EXPOSE 5000
 
 # Usar entrypoint para detectar entorno y ejecutar comando apropiado
-ENTRYPOINT ["./entrypoint.sh"]
+# Usar ruta absoluta para evitar problemas en Windows
+ENTRYPOINT ["/app/entrypoint.sh"]
