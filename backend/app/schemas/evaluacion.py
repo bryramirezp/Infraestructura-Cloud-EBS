@@ -1,8 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from app.database.enums import TipoPregunta
 
 

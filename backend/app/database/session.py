@@ -1,7 +1,6 @@
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
-from sqlalchemy.pool import QueuePool
-from typing import Generator
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase
+from typing import AsyncGenerator
 import logging
 import os
 from app.config import settings
@@ -17,14 +16,18 @@ class Base(DeclarativeBase):
 def get_database_url() -> str:
     """Get database URL from settings or construct from components"""
     if settings.database_url:
-        logger.info(f"Using DATABASE_URL from settings: {settings.database_url[:50]}...")
-        return settings.database_url
+        db_url = settings.database_url
+        # Convert postgresql:// to postgresql+asyncpg:// if needed
+        if db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        logger.info(f"Using DATABASE_URL from settings: {db_url[:50]}...")
+        return db_url
     
     if settings.is_development:
         logger.warning("DATABASE_URL not set, constructing from components")
         db_host = os.getenv("POSTGRES_HOST", "db")
         constructed_url = (
-            f"postgresql://{settings.postgres_user}:{settings.postgres_password}"
+            f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}"
             f"@{db_host}:{settings.postgres_port}/{settings.postgres_db}"
         )
         logger.info(f"Constructed DATABASE_URL: {constructed_url[:50]}...")
@@ -34,17 +37,13 @@ def get_database_url() -> str:
 
 
 def create_database_engine():
-    """Create SQLAlchemy engine with optimized pool settings"""
+    """Create SQLAlchemy async engine with optimized pool settings"""
     database_url = get_database_url()
     
     engine_kwargs = {
         "url": database_url,
-        "poolclass": QueuePool,
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_pre_ping": True,
-        "pool_recycle": 3600,
         "echo": settings.is_development,
+        "pool_pre_ping": True,
     }
     
     if settings.is_production:
@@ -54,16 +53,16 @@ def create_database_engine():
             "pool_recycle": 1800,
             "echo": False,
         })
+    else:
+        engine_kwargs.update({
+            "pool_size": 10,
+            "max_overflow": 20,
+            "pool_recycle": 3600,
+        })
     
-    engine = create_engine(**engine_kwargs)
+    engine = create_async_engine(**engine_kwargs)
     
-    @event.listens_for(engine, "connect")
-    def set_postgres_params(dbapi_conn, connection_record):
-        """Set PostgreSQL connection parameters"""
-        with dbapi_conn.cursor() as cursor:
-            cursor.execute("SET timezone TO 'UTC'")
-    
-    logger.info(f"Database engine created for {settings.environment} environment")
+    logger.info(f"Database async engine created for {settings.environment} environment")
     return engine
 
 
@@ -78,14 +77,13 @@ def _get_engine():
     return _engine
 
 def _get_session_local():
-    """Lazy initialization of session maker"""
+    """Lazy initialization of async session maker"""
     global _SessionLocal
     if _SessionLocal is None:
-        _SessionLocal = sessionmaker(
-            autocommit=False,
-            autoflush=False,
+        _SessionLocal = async_sessionmaker(
             bind=_get_engine(),
-            class_=Session,
+            class_=AsyncSession,
+            expire_on_commit=False,
         )
     return _SessionLocal
 
@@ -105,37 +103,39 @@ engine = _LazyEngine()
 SessionLocal = _LazySessionLocal()
 
 
-def get_db() -> Generator[Session, None, None]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    Dependency function to get database session.
+    Dependency function to get async database session.
     
     Usage:
         @router.get("/items")
-        async def get_items(db: Session = Depends(get_db)):
-            return db.query(Item).all()
+        async def get_items(db: AsyncSession = Depends(get_db)):
+            result = await db.execute(select(Item))
+            return result.scalars().all()
     """
-    db = _get_session_local()()
-    try:
-        yield db
-    except Exception as e:
-        logger.error(f"Database session error: {e}")
-        db.rollback()
-        raise
-    finally:
-        db.close()
+    async with _get_session_local()() as db:
+        try:
+            yield db
+        except Exception as e:
+            logger.error(f"Database session error: {e}")
+            await db.rollback()
+            raise
+        finally:
+            await db.close()
 
 
-def init_db():
+async def init_db():
     """Initialize database by creating all tables"""
     logger.info("Initializing database tables...")
-    Base.metadata.create_all(bind=_get_engine())
+    async with _get_engine().begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables created successfully")
 
 
-def close_db():
+async def close_db():
     """Close database engine connections"""
     logger.info("Closing database connections...")
     if _engine is not None:
-        _engine.dispose()
+        await _engine.dispose()
     logger.info("Database connections closed")
 

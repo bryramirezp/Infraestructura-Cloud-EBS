@@ -2,7 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
 from app.schemas.curso import CursoResponse
@@ -21,23 +21,23 @@ router = APIRouter(prefix="/modulos", tags=["Modulos"])
 
 @router.get("", response_model=List[ModuloResponse], status_code=status.HTTP_200_OK)
 async def list_modulos(
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 	publicado: Optional[bool] = Query(None, description="Filtrar por estado publicado"),
 ):
 	"""Listar módulos disponibles, con filtro opcional por publicación."""
 	service = ModuloService(db)
-	modulos = service.list_modulos(publicado=publicado)
+	modulos = await service.list_modulos(publicado=publicado)
 	return modulos
 
 
 @router.get("/{modulo_id}", response_model=ModuloDetailResponse, status_code=status.HTTP_200_OK)
 async def get_modulo(
 	modulo_id: UUID,
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 ):
 	"""Obtener módulo y sus cursos asociados."""
 	service = ModuloService(db)
-	modulo = service.get_modulo_with_cursos(modulo_id)
+	modulo = await service.get_modulo_with_cursos(modulo_id)
 	cursos = sorted(modulo.cursos, key=lambda rel: rel.slot)
 	curso_items = [
 		ModuloCursoItem(
@@ -62,11 +62,11 @@ async def get_modulo(
 @router.get("/{modulo_id}/cursos", response_model=List[CursoResponse], status_code=status.HTTP_200_OK)
 async def list_cursos_by_modulo(
 	modulo_id: UUID,
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 ):
 	"""Listar cursos asociados a un módulo."""
 	service = ModuloService(db)
-	cursos = service.list_cursos_by_modulo(modulo_id)
+	cursos = await service.list_cursos_by_modulo(modulo_id)
 	return cursos
 
 
@@ -74,11 +74,11 @@ async def list_cursos_by_modulo(
 async def create_modulo(
 	payload: ModuloCreate,
 	_: dict = Depends(require_role([UserRole.ADMIN])),
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 ):
 	"""Crear un nuevo módulo (solo administradores)."""
 	service = ModuloService(db)
-	modulo = service.create_modulo(payload.dict())
+	modulo = await service.create_modulo(payload.dict())
 	return modulo
 
 
@@ -87,10 +87,10 @@ async def update_modulo(
 	modulo_id: UUID,
 	payload: ModuloUpdate,
 	_: dict = Depends(require_role([UserRole.ADMIN])),
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 ):
 	"""Actualizar un módulo existente (solo administradores)."""
 	service = ModuloService(db)
-	modulo = service.get_modulo(modulo_id)
-	updated = service.update_modulo(modulo, payload.dict(exclude_unset=True))
+	modulo = await service.get_modulo(modulo_id)
+	updated = await service.update_modulo(modulo, payload.dict(exclude_unset=True))
 	return updated

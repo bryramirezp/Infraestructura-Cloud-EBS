@@ -3,7 +3,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
 from app.schemas.curso import CursoCreate, CursoDetailResponse, CursoResponse, CursoUpdate
@@ -19,24 +19,24 @@ router = APIRouter(prefix="/cursos", tags=["Cursos"])
 
 @router.get("", response_model=List[CursoResponse], status_code=status.HTTP_200_OK)
 async def list_cursos(
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 	publicado: Optional[bool] = Query(None, description="Filtrar por estado publicado"),
 	modulo_id: Optional[UUID] = Query(None, description="Filtrar por módulo"),
 ):
 	"""Listar cursos (materias) disponibles, con filtros opcionales."""
 	service = CursoService(db)
-	cursos = service.list_cursos(publicado=publicado, modulo_id=modulo_id)
+	cursos = await service.list_cursos(publicado=publicado, modulo_id=modulo_id)
 	return cursos
 
 
 @router.get("/{curso_id}", response_model=CursoDetailResponse, status_code=status.HTTP_200_OK)
 async def get_curso(
 	curso_id: UUID,
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 ):
 	"""Obtener curso con detalles completos (guías de estudio, examen final)."""
 	service = CursoService(db)
-	curso = service.get_curso_with_relations(curso_id)
+	curso = await service.get_curso_with_relations(curso_id)
 	
 	guias_response = [
 		GuiaEstudioResponse.from_orm(guia) for guia in curso.guias_estudio if guia.activo
@@ -57,14 +57,14 @@ async def get_curso(
 @router.get("/{curso_id}/guias-estudio", response_model=List[GuiaEstudioResponse], status_code=status.HTTP_200_OK)
 async def get_guias_estudio(
 	curso_id: UUID,
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 	activo: Optional[bool] = Query(True, description="Filtrar solo guías activas"),
 ):
 	"""Obtener guías de estudio de un curso, con URLs prefirmadas si están en S3."""
 	service = CursoService(db)
 	s3_service = S3Service()
 	
-	guias = service.list_guias_estudio(curso_id, activo=activo)
+	guias = await service.list_guias_estudio(curso_id, activo=activo)
 	
 	guias_response = []
 	for guia in guias:
@@ -93,11 +93,11 @@ async def get_guias_estudio(
 async def create_curso(
 	payload: CursoCreate,
 	_: dict = Depends(require_role([UserRole.ADMIN])),
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 ):
 	"""Crear un nuevo curso (materia) - solo administradores."""
 	service = CursoService(db)
-	curso = service.create_curso(payload.dict())
+	curso = await service.create_curso(payload.dict())
 	return curso
 
 
@@ -106,11 +106,11 @@ async def update_curso(
 	curso_id: UUID,
 	payload: CursoUpdate,
 	_: dict = Depends(require_role([UserRole.ADMIN])),
-	db: Session = Depends(get_db),
+	db: AsyncSession = Depends(get_db),
 ):
 	"""Actualizar un curso existente - solo administradores."""
 	service = CursoService(db)
-	curso = service.get_curso(curso_id)
-	updated = service.update_curso(curso, payload.dict(exclude_unset=True))
+	curso = await service.get_curso(curso_id)
+	updated = await service.update_curso(curso, payload.dict(exclude_unset=True))
 	return updated
 

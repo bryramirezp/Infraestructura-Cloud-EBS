@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -34,12 +35,29 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Manage application startup and shutdown lifecycle."""
+    logger.info(f"Starting EBS API in {settings.environment} mode")
+    logger.info(f"CORS origins: {settings.cors_origins_list}")
+    if settings.database_url:
+        logger.info(f"Database URL configured: {settings.database_url[:20]}...")
+    else:
+        logger.warning("Database URL not configured - running without database connection")
+    try:
+        yield
+    finally:
+        logger.info("Shutting down EBS API")
+
+
 app = FastAPI(
     title="EBS API",
     description="API para Plataforma Digital Escuela Bíblica Salem",
     version="1.0.0",
     docs_url="/docs" if settings.is_development else None,
     redoc_url="/redoc" if settings.is_development else None,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -118,20 +136,6 @@ async def root():
         "docs": "/docs" if settings.is_development else "disabled"
     }
 
-
-@app.on_event("startup")
-async def startup_event():
-    """Log startup information"""
-    logger.info(f"Starting EBS API in {settings.environment} mode")
-    logger.info(f"CORS origins: {settings.cors_origins_list}")
-    if settings.database_url:
-        logger.info(f"Database URL configured: {settings.database_url[:20]}...")
-    else:
-        logger.warning("Database URL not configured - running without database connection")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Log shutdown information"""
-    logger.info("Shutting down EBS API")
-
+# --- Ejecutar la aplicación ---
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

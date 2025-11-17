@@ -1,4 +1,5 @@
 from app.database.session import engine, get_db, SessionLocal, Base
+from app.database.session import AsyncSession
 from app.database.enums import (
     EstadoPublicacion,
     TipoContenido,

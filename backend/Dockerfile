@@ -1,73 +1,71 @@
-# ----- Etapa 1: Builder -----
-# Usamos una imagen completa que tiene las herramientas de compilación
-FROM python:3.11-slim AS builder
+# /backend/Dockerfile
+# Este Dockerfile está diseñado para funcionar con 'context: ./backend'
+# y una estructura de código en 'backend/app/main.py'
+# Multi-stage build para optimizar tamaño y seguridad
 
-# Instala las dependencias del sistema necesarias para compilar
-# build-essential: gcc, make, etc. (para cryptography)
-# libpq-dev: cabeceras de postgres (buena práctica para psycopg2)
+# ---------------------------
+# Stage 1: Builder
+# ---------------------------
+FROM python:3.11-slim as builder
+
+# Evita archivos .pyc y buffering
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
-RUN apt-get update && apt-get install -y \
-    build-essential \
+
+# Instalar dependencias de sistema necesarias para compilar
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala las dependencias de Python en un "virtual env"
+# Crear entorno virtual
 RUN python -m venv /opt/venv
+
+# Activar entorno virtual para las instalaciones
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copia solo los requisitos e instala
+# Copiar y instalar dependencias
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# ----- Etapa 2: Final -----
-# Usamos la imagen 'slim' para producción
+# ---------------------------
+# Stage 2: Runtime
+# ---------------------------
 FROM python:3.11-slim
 
-# Instala curl para el healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-# Establece el WORKDIR y el PYTHONPATH
 WORKDIR /app
-ENV PYTHONPATH=/app
-ENV PATH="/opt/venv/bin:$PATH"
 
-# Copia el entorno virtual 'venv' de la etapa 'builder'
+# Instalar curl para healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crear usuario sin privilegios
+RUN useradd -m -r appuser && \
+    chown appuser /app
+
+# Copiar entorno virtual desde el builder
 COPY --from=builder /opt/venv /opt/venv
 
-# Copia toda la carpeta de la app (código Python)
-COPY app /app/app
+# Activar entorno virtual
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Verifica estructura de directorios y crea __init__.py faltantes
-RUN echo "=== Verificando estructura de directorios ===" && \
-    ls -la /app/ && \
-    echo "=== Contenido de /app/app ===" && \
-    ls -la /app/app/ && \
-    echo "=== Verificando archivos críticos ===" && \
-    test -f /app/app/main.py || (echo "ERROR: app/main.py not found" && exit 1) && \
-    test -f /app/app/config.py || (echo "ERROR: app/config.py not found" && exit 1) && \
-    echo "=== Asegurando __init__.py en todos los directorios ===" && \
-    touch /app/app/__init__.py && \
-    touch /app/app/routes/__init__.py && \
-    touch /app/app/services/__init__.py && \
-    touch /app/app/utils/__init__.py && \
-    touch /app/app/schemas/__init__.py && \
-    touch /app/app/database/__init__.py && \
-    touch /app/app/tests/__init__.py && \
-    echo "=== Estructura verificada correctamente ==="
+# Copiar código fuente y dar permisos
+COPY --chown=appuser:appuser . .
 
-# Verifica que Python puede encontrar el módulo
-# Nota: La importación de app.main puede fallar aquí si faltan variables de entorno,
-# pero eso es normal - se resolverá en runtime con valores por defecto en desarrollo
-RUN echo "=== Verificando PYTHONPATH ===" && \
-    echo "PYTHONPATH=$PYTHONPATH" && \
-    python -c "import sys; print('Python path:', sys.path)" && \
-    echo "=== Verificando estructura de módulos ===" && \
-    python -c "import app; print('✓ Módulo app encontrado')" 2>&1 || echo "WARNING: Módulo app no importable sin variables de entorno (normal en build)" && \
-    echo "=== Verificación completada ==="
+# Convertir saltos de línea a LF y dar permisos de ejecución al entrypoint (como root, antes de cambiar usuario)
+RUN sed -i 's/\r$//' /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh && \
+    head -1 /app/entrypoint.sh
 
-# Expone el puerto
-EXPOSE 8000
+# Cambiar al usuario seguro
+USER appuser
 
-# Ejecuta Uvicorn con diagnóstico mejorado
-# Usamos python -m uvicorn para mejor resolución de módulos
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Puerto que expone el contenedor
+EXPOSE 5000
+
+# Usar entrypoint para detectar entorno y ejecutar comando apropiado
+ENTRYPOINT ["./entrypoint.sh"]

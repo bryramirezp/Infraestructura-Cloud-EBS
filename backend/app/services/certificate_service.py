@@ -1,11 +1,13 @@
 import hashlib
 import uuid
+import asyncio
 from datetime import datetime
 from typing import Optional
 from io import BytesIO
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -17,6 +19,9 @@ from app.utils.exceptions import EBSException
 
 logger = logging.getLogger(__name__)
 
+# ThreadPoolExecutor compartido para ejecutar trabajo bloqueante de reportlab
+executor = ThreadPoolExecutor(max_workers=3)
+
 
 class CertificateService:
     """Servicio para generación y gestión de certificados PDF"""
@@ -25,7 +30,7 @@ class CertificateService:
         """Inicializar servicio de certificados"""
         self.s3_service = s3_service or get_s3_service()
 
-    def generate_certificate(
+    def _generar_pdf_sincrono(
         self,
         usuario_nombre: str,
         usuario_apellido: str,
@@ -119,7 +124,7 @@ class CertificateService:
             
             story.append(
                 Paragraph(
-                    f"Por medio del presente se certifica que",
+                    "Por medio del presente se certifica que",
                     center_style
                 )
             )
@@ -131,7 +136,7 @@ class CertificateService:
             
             story.append(
                 Paragraph(
-                    f"ha completado exitosamente el curso",
+                    "ha completado exitosamente el curso",
                     center_style
                 )
             )
@@ -151,7 +156,7 @@ class CertificateService:
             
             story.append(
                 Paragraph(
-                    f"cumpliendo con todos los requisitos académicos establecidos.",
+                    "cumpliendo con todos los requisitos académicos establecidos.",
                     center_style
                 )
             )
@@ -213,6 +218,32 @@ class CertificateService:
                 error_code="CERTIFICATE_GENERATION_ERROR"
             )
 
+    async def generate_certificate(
+        self,
+        usuario_nombre: str,
+        usuario_apellido: str,
+        curso_titulo: str,
+        folio: str,
+        fecha_emision: Optional[datetime] = None
+    ) -> bytes:
+        """
+        Generar PDF de certificado de forma asíncrona usando ThreadPoolExecutor.
+        
+        Esto mueve el trabajo bloqueante de reportlab a un hilo separado,
+        evitando bloquear el event loop de asyncio.
+        """
+        loop = asyncio.get_running_loop()
+        resultado = await loop.run_in_executor(
+            executor,
+            self._generar_pdf_sincrono,
+            usuario_nombre,
+            usuario_apellido,
+            curso_titulo,
+            folio,
+            fecha_emision
+        )
+        return resultado
+
     def generate_hash_verification(
         self,
         certificado_id: str,
@@ -249,7 +280,7 @@ class CertificateService:
         unique_id = str(uuid.uuid4()).replace("-", "").upper()[:6]
         return f"CERT-{fecha_str}-{unique_id}"
 
-    def create_and_upload_certificate(
+    async def create_and_upload_certificate(
         self,
         certificado_id: str,
         usuario_nombre: str,
@@ -278,7 +309,7 @@ class CertificateService:
             fecha_emision = fecha_emision or datetime.now()
             folio = self.generate_folio()
             
-            pdf_bytes = self.generate_certificate(
+            pdf_bytes = await self.generate_certificate(
                 usuario_nombre=usuario_nombre,
                 usuario_apellido=usuario_apellido,
                 curso_titulo=curso_titulo,

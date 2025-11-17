@@ -1,17 +1,19 @@
 fastapi==0.115.13
-uvicorn[standard]==0.32.1
-psycopg2-binary==2.9.10
+gunicorn==20.1.0
+uvicorn==0.32.1
+uvloop>=0.21.0
+# Drivers y BD
+asyncpg==0.27.0
+sqlalchemy==2.0.36
+# Auth & Seguridad
 PyJWT==2.9.0
 cryptography==43.0.3
-boto3==1.35.50
-reportlab==4.2.5
+authlib==1.3.1
+email-validator==2.2.0
+# AWS 
+aioboto3==15.5.0
+# Utilidades
 pydantic==2.9.2
 pydantic-settings==2.6.1
-sqlalchemy==2.0.36
-alembic==1.14.0
-pytest==8.3.4
-pytest-asyncio==0.24.0
-httpx==0.27.2
-requests==2.32.3
-respx==0.22.0
-authlib==1.3.1
+httpx==0.27.2      
+reportlab==4.2.5

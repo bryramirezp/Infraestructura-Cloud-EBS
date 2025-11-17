@@ -1,12 +1,23 @@
 🧩 Arquitectura general (resumen técnico)
 
-Tipo de app: Plataforma educativa pequeña (≈100 usuarios) Estilo: SPA + API REST Despliegue: Docker → AWS ECS Fargate
+Tipo de app: Plataforma educativa pequeña (≈100 usuarios) Estilo: SPA + API REST Despliegue: Docker → AWS App Runner
 
-⚙️ Backend
+⚙️ Backend (Core)
 
-Lenguaje: Python
+- Runtime: Python 3.11+ (optimizado para asyncio).
+- Framework: FastAPI 0.115+ (modo 100% async).
 
-Framework: FastAPI
+Servidor de Aplicaciones:
+
+- Gestor de Procesos: `gunicorn` (gestión de workers, reinicios y señales).
+- Worker Class: `uvicorn.workers.UvicornWorker` (habilita el event loop asíncrono; se recomienda `uvloop`).
+- Configuración Prod recomendada: `workers = 2-4` (ajustado a vCPU de App Runner) y `threads = 1`.
+
+Patrones de Diseño:
+
+- Service Layer Pattern: Lógica de negocio desacoplada de las rutas HTTP (routes → services → database).
+- Dependency Injection: Gestión de sesiones de BD y usuario actual vía FastAPI `Depends`.
+- Repository Pattern (implícito): Consultas abstractas mediante SQLAlchemy `select`/`execute`.
 
 Estructura: Monolito modular
 
@@ -25,29 +36,43 @@ FastAPI solo valida: El backend no genera ni almacena contraseñas. Solo recibe 
 
 Tokens: El frontend obtiene access_token y refresh_token directamente de Cognito y los gestiona (idealmente en cookies seguras: HttpOnly, Secure, SameSite=Strict).
 
-Almacenamiento: Postgres
+
+🗄️ Capa de Persistencia (Data Layer)
+
+- Motor: PostgreSQL 13+ (RDS `db.t3.micro` con Storage Auto-scaling recomendado).
+
+ORM & Driver:
+
+- SQLAlchemy 2.0+: Uso estricto de `AsyncEngine` y `AsyncSession`.
+- Driver: `asyncpg` (alto rendimiento, evita bloqueos por I/O y se integra con asyncio).
+
+Estrategia de Conexión:
+
+- Pooling: elegir `NullPool` si App Runner gestiona muchas instancias; en caso contrario `QueuePool` con `pool_size=20` y `max_overflow=10` para evitar "connection storms".
+- Integridad: `pool_pre_ping=True` para recuperar conexiones "zombies".
+
+Migraciones: `alembic` para versionado del esquema de BD.
 
 Integraciones: S3 (mediante URLs prefirmadas para subida/descarga de archivos)
 
 Contenedor: Docker (imagen individual para backend)
 
-💻 Frontend
+💻 Frontend (Cliente)
 
-Framework: React + Vite
+- Stack: React 18+ (Functional Components) + Vite.
+- Estado/Fetch: TanStack Query (React Query) para caché, revalidación y manejo de estados de carga.
+- Tipo: Single Page Application (SPA) comunicándose con la API REST del backend.
 
-Tipo: Single Page Application (SPA)
+Despliegue y Hosting:
 
-Comunicación: REST API (con el backend)
-
-Despliegue: Docker (imagen separada para frontend)
-
-Hosting posible: ECS, Amplify o Nginx en contenedor
+- Despliegue: archivos estáticos servidos desde S3 + CloudFront (recomendado) para invalidación y caching global.
+- Alternativa: contenedor Nginx Alpine en App Runner para servir estáticos si se necesita lógica adicional en el borde.
 
 ☁️ Infraestructura
 
 Orquestación: Docker Compose (local)
 
-Producción: ECS Fargate (dos servicios: frontend y backend)
+Producción: AWS App Runner (dos servicios: frontend y backend)
 
 Identidad: Amazon Cognito (User Pools)
 
@@ -57,4 +82,4 @@ Archivos: S3 (usando presigned URLs)
 
 Seguridad básica: HTTPS + cookies seguras + CORS configurado
 
-✅ Resumen corto: SPA (React/Vite) + API REST (FastAPI monolito) + Amazon Cognito + Postgres + S3 (presigned URLs). Desplegado con Docker → ECS Fargate.
+✅ Resumen corto: SPA (React/Vite) + API REST (FastAPI 100% async) + Amazon Cognito + RDS Postgres (`db.t3.micro`) con pool de conexiones (usando `asyncpg` + SQLAlchemy Async) + S3/CloudFront. Desplegado con Docker → AWS App Runner. En producción ejecutar con `gunicorn` + `uvicorn.workers.UvicornWorker`.

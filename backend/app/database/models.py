@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, String, Text, Boolean, Integer, Numeric, Date, 
+    String, Text, Boolean, Integer, Numeric, Date,
     DateTime, ForeignKey, UniqueConstraint, CheckConstraint,
     func
 )
@@ -11,7 +11,7 @@ import uuid
 
 from app.database.session import Base
 from app.database.enums import (
-    EstadoPublicacion, TipoContenido, EstadoInscripcion,
+    TipoContenido, EstadoInscripcion,
     ResultadoIntento, TipoPregunta
 )
 

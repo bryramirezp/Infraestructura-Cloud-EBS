@@ -3,7 +3,8 @@ import uuid
 from typing import List, Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import models
 from app.utils.exceptions import NotFoundError
@@ -14,10 +15,10 @@ logger = logging.getLogger(__name__)
 class CursoService:
 	"""Lógica de negocio para cursos (materias)."""
 
-	def __init__(self, db: Session):
+	def __init__(self, db: AsyncSession):
 		self.db = db
 
-	def list_cursos(
+	async def list_cursos(
 		self,
 		*,
 		publicado: Optional[bool] = None,
@@ -34,18 +35,20 @@ class CursoService:
 			)
 
 		stmt = stmt.order_by(models.Curso.titulo.asc())
-		cursos = self.db.execute(stmt).scalars().all()
+		result = await self.db.execute(stmt)
+		cursos = result.scalars().all()
 		logger.debug("Cursos recuperados: %s", len(cursos))
 		return cursos
 
-	def get_curso(self, curso_id: uuid.UUID) -> models.Curso:
+	async def get_curso(self, curso_id: uuid.UUID) -> models.Curso:
 		stmt = select(models.Curso).where(models.Curso.id == curso_id)
-		curso = self.db.execute(stmt).scalar_one_or_none()
+		result = await self.db.execute(stmt)
+		curso = result.scalar_one_or_none()
 		if not curso:
 			raise NotFoundError("Curso", str(curso_id))
 		return curso
 
-	def get_curso_with_relations(self, curso_id: uuid.UUID) -> models.Curso:
+	async def get_curso_with_relations(self, curso_id: uuid.UUID) -> models.Curso:
 		stmt = (
 			select(models.Curso)
 			.options(
@@ -55,20 +58,21 @@ class CursoService:
 			)
 			.where(models.Curso.id == curso_id)
 		)
-		curso = self.db.execute(stmt).scalar_one_or_none()
+		result = await self.db.execute(stmt)
+		curso = result.scalar_one_or_none()
 		if not curso:
 			raise NotFoundError("Curso", str(curso_id))
 		return curso
 
-	def create_curso(self, data: dict) -> models.Curso:
+	async def create_curso(self, data: dict) -> models.Curso:
 		curso = models.Curso(**data)
 		self.db.add(curso)
-		self.db.commit()
-		self.db.refresh(curso)
+		await self.db.commit()
+		await self.db.refresh(curso)
 		logger.info("Curso %s creado", curso.id)
 		return curso
 
-	def update_curso(self, curso: models.Curso, data: dict) -> models.Curso:
+	async def update_curso(self, curso: models.Curso, data: dict) -> models.Curso:
 		if not data:
 			return curso
 
@@ -78,18 +82,19 @@ class CursoService:
 				setattr(curso, field, value)
 
 		self.db.add(curso)
-		self.db.commit()
-		self.db.refresh(curso)
+		await self.db.commit()
+		await self.db.refresh(curso)
 		logger.info("Curso %s actualizado", curso.id)
 		return curso
 
-	def list_guias_estudio(self, curso_id: uuid.UUID, activo: Optional[bool] = None) -> List[models.GuiaEstudio]:
+	async def list_guias_estudio(self, curso_id: uuid.UUID, activo: Optional[bool] = None) -> List[models.GuiaEstudio]:
 		stmt = select(models.GuiaEstudio).where(models.GuiaEstudio.curso_id == curso_id)
 		
 		if activo is not None:
 			stmt = stmt.where(models.GuiaEstudio.activo == activo)
 		
 		stmt = stmt.order_by(models.GuiaEstudio.creado_en.desc())
-		guias = self.db.execute(stmt).scalars().all()
+		result = await self.db.execute(stmt)
+		guias = result.scalars().all()
 		logger.debug("Guias de estudio recuperadas para curso %s: %s", curso_id, len(guias))
 		return guias

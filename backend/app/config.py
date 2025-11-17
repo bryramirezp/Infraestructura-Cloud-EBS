@@ -136,7 +136,7 @@ class Settings(BaseSettings):
             errors.append("DATABASE_URL is required in non-development environments")
 
         if self.environment not in ["development", "staging", "production"]:
-            errors.append(f"ENVIRONMENT must be one of: development, staging, production")
+            errors.append("ENVIRONMENT must be one of: development, staging, production")
 
         if errors:
             raise ValueError(f"Configuration errors: {', '.join(errors)}")

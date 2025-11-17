@@ -1,8 +1,14 @@
 services:
   backend:
+    # El entrypoint.sh detecta ENVIRONMENT=development y ejecuta uvicorn con --reload automáticamente
+    # No necesitamos sobrescribir el command, el entrypoint.sh lo maneja
+    
+    # Volumen para hot-reload: mapea código local directamente al contenedor
+    # Esto permite que uvicorn --reload detecte cambios en el código
     volumes:
-      - ./backend/app:/app/app:rw
+      - ./backend:/app:rw
+
+    # Entorno específico de desarrollo
+    # El entrypoint.sh detecta esto y ejecuta: uvicorn app.main:app --reload
     environment:
-      ENVIRONMENT: development
-    # Usar python -m uvicorn para mejor resolución de módulos (consistente con Dockerfile)
-    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+      - ENVIRONMENT=development

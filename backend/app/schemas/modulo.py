@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List
 import uuid
 from datetime import date, datetime
 
-if TYPE_CHECKING:
-    from app.schemas.curso import CursoResponse
+from app.schemas.curso import CursoResponse
 
 
 class ModuloBase(BaseModel):
@@ -37,7 +36,7 @@ class ModuloResponse(ModuloBase):
 
 
 class ModuloCursoItem(BaseModel):
-    curso: "CursoResponse"
+    curso: CursoResponse
     slot: int
 
     class Config:

@@ -23,32 +23,32 @@ services:
 
   backend:
     build:
+      # CORRECCIÓN: El contexto es la carpeta backend
       context: ./backend
+      # CORRECCIÓN: El Dockerfile está en la raíz de ese contexto
       dockerfile: Dockerfile
     container_name: ebs_backend
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-5000}:5000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ebs_user}:${POSTGRES_PASSWORD:-ebs_password}@db:5432/${POSTGRES_DB:-ebs_db}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ebs_user}:${POSTGRES_PASSWORD:-ebs_password}@db:5432/${POSTGRES_DB:-ebs_db}
       AWS_REGION: ${AWS_REGION:-us-east-1}
-      # Valores por defecto para desarrollo si no están en .env
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-dummy-pool-id}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-dummy-client-id}
-      COGNITO_REDIRECT_URI: ${COGNITO_REDIRECT_URI:-http://localhost:5173/auth/callback}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-dummy-bucket-name}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
+      COGNITO_REDIRECT_URI: ${COGNITO_REDIRECT_URI}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      # PYTHONPATH sigue siendo /app porque es el WORKDIR dentro del Dockerfile
       PYTHONPATH: /app
     depends_on:
       db:
         condition: service_healthy
-    # Comenta el volumen si no estás en desarrollo activo
-    # volumes:
-    #   - ./backend/app:/app/app:rw
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -64,4 +64,3 @@ volumes:
 networks:
   ebs_network:
     driver: bridge
-

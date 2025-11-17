@@ -1,0 +1,23 @@
+# docker-compose.prod.yml
+# IMPORTANTE: AWS App Runner NO lee este archivo.
+# Este archivo es SOLO para probar la imagen de producción localmente
+# antes de desplegar a AWS.
+#
+# Uso: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  backend:
+    # Override del comando para forzar modo producción
+    command: null  # Usa el ENTRYPOINT del Dockerfile
+    
+    # Sin volúmenes de desarrollo (usa código copiado en imagen)
+    volumes: []
+    
+    # Variables de entorno de producción
+    environment:
+      ENVIRONMENT: production
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # DATABASE_URL se hereda de docker-compose.yml base
+      # En producción real (AWS), esto apuntaría a RDS
+
