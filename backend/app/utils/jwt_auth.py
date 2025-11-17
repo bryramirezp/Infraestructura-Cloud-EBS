@@ -1,6 +1,6 @@
 import jwt
 from jwt.exceptions import InvalidTokenError, DecodeError
-import requests
+import httpx
 from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict
@@ -41,22 +41,27 @@ class JWKSCache:
 _jwks_cache = JWKSCache(ttl_seconds=3600)
 
 
-def get_jwks() -> Dict:
-    """Get JWKS from Cognito with caching"""
+async def get_jwks() -> Dict:
+    """Get JWKS from Cognito with caching (async).
+
+    Uses an async httpx client to avoid blocking the event loop.
+    """
     cached = _jwks_cache.get()
     if cached:
         logger.debug("Using cached JWKS")
         return cached
-    
+
+    jwks_url = f"{settings.cognito_issuer}/.well-known/jwks.json"
+    logger.info(f"Fetching JWKS from {jwks_url}")
+
     try:
-        jwks_url = f"{settings.cognito_issuer}/.well-known/jwks.json"
-        logger.info(f"Fetching JWKS from {jwks_url}")
-        response = requests.get(jwks_url, timeout=5)
-        response.raise_for_status()
-        jwks = response.json()
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(jwks_url)
+        resp.raise_for_status()
+        jwks = resp.json()
         _jwks_cache.set(jwks)
         return jwks
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         logger.error(f"Failed to fetch JWKS: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -64,7 +69,7 @@ def get_jwks() -> Dict:
         )
 
 
-def get_rsa_key(token: str) -> str:
+async def get_rsa_key(token: str) -> str:
     """Extract RSA public key from JWKS for token verification"""
     try:
         unverified_header = jwt.get_unverified_header(token)
@@ -75,7 +80,7 @@ def get_rsa_key(token: str) -> str:
             detail="Invalid token header"
         )
     
-    jwks = get_jwks()
+    jwks = await get_jwks()
     kid = unverified_header.get("kid")
     
     if not kid:
@@ -114,12 +119,12 @@ def get_rsa_key(token: str) -> str:
     )
 
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
+async def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
     """Verify JWT token from Cognito and return payload"""
     token = credentials.credentials
     
     try:
-        public_key = get_rsa_key(token)
+        public_key = await get_rsa_key(token)
         
         payload = jwt.decode(
             token,
@@ -153,9 +158,9 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Security(security))
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
     """Dependency to get current authenticated user from token"""
-    return verify_token(credentials)
+    return await verify_token(credentials)
 
 
 def get_user_id_from_token(token_payload: Dict) -> Optional[str]:
@@ -170,3 +175,10 @@ def get_user_groups_from_token(token_payload: Dict) -> list[str]:
         return [groups]
     return groups if isinstance(groups, list) else []
 
+
+__all__ = [
+    "verify_token",
+    "get_current_user",
+    "get_user_groups_from_token",
+    "get_user_id_from_token",
+]

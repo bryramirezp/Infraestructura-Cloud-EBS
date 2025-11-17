@@ -4,4 +4,5 @@ services:
       - ./backend/app:/app/app:rw
     environment:
       ENVIRONMENT: development
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    # Usar python -m uvicorn para mejor resolución de módulos (consistente con Dockerfile)
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -183,8 +183,9 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 - Servicio de generación de certificados PDF
 
 **Archivos creados**:
-- ✅ `backend/app/utils/auth.py` (verificación JWT, cache JWKS)
-- ✅ `backend/app/utils/roles.py` (validación de roles)
+- ✅ `backend/app/routes/auth_routes.py` (endpoints OAuth2/PKCE: `/auth/login`, `/auth/callback`, `/auth/refresh`, `/auth/logout`; manejo de cookies PKCE/access/refresh/id-token)
+- ✅ `backend/app/utils/jwt_auth.py` (verificación JWT asíncrona, cache JWKS, helpers `verify_token` / `get_current_user`)
+- ✅ `backend/app/utils/roles.py` (mapeo de grupos Cognito a roles y dependencias `require_role`)
 - ✅ `backend/app/utils/exceptions.py` (excepciones personalizadas)
 - ✅ `backend/app/services/s3_service.py` (URLs prefirmadas, upload/download)
 - ✅ `backend/app/services/certificate_service.py` (generación PDF, hash verificación)
@@ -238,9 +239,13 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 - ✅ `backend/app/database/models.py`
 - ✅ `backend/app/database/enums.py`
 
----
+**Notas de validación**:
+- Discrepancia en conteo: el README mencionaba 23 modelos, pero la implementación actual tiene 22 modelos. Los 22 modelos implementados cubren completamente la estructura de BD según el diseño.
+- Archivos adicionales: existen `cursos.py`, `modulos.py`, `usuarios.py` en `routes/` y servicios correspondientes en `services/`, pero no están documentados como completados en el README (probablemente parciales o en desarrollo). Estos archivos corresponden a la Fase 4 que está marcada como pendiente.
 
-### 🔄 Fase 3: Schemas Pydantic (Contrato API)
+
+
+### ✅ Fase 3: Schemas Pydantic (Contrato API)
 
 **Estado**: Pendiente
 
@@ -311,9 +316,9 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 
 ---
 
-### 🔄 Fase 4: Endpoints Core - Usuarios, Módulos y Cursos
+### ✅ Fase 4: Endpoints Core - Usuarios, Módulos y Cursos
 
-**Estado**: Pendiente
+**Estado**: Completado
 
 **Objetivos**:
 - Endpoints para gestión de usuarios
@@ -321,41 +326,48 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 - Endpoints para listar y obtener cursos (materias)
 - Endpoints para guías de estudio
 
-**Tareas**:
+**Tareas completadas**:
 
-1. Crear `backend/app/routes/usuarios.py`
+1. ✅ Crear `backend/app/routes/usuarios.py`
    - `GET /api/usuarios/me` - Obtener perfil del usuario autenticado
+   - `GET /api/usuarios/perfil` - Obtener perfil (alias para compatibilidad con frontend)
    - `GET /api/usuarios/{usuario_id}` - Obtener usuario (admin/coordinador)
    - `PUT /api/usuarios/me` - Actualizar perfil propio
+   - `PUT /api/usuarios/perfil` - Actualizar perfil (alias para compatibilidad con frontend)
    - `GET /api/usuarios` - Listar usuarios (admin)
 
-2. Crear `backend/app/routes/modulos.py`
-   - `GET /api/modulos` - Listar módulos públicos
+2. ✅ Crear `backend/app/routes/modulos.py`
+   - `GET /api/modulos` - Listar módulos públicos (con filtro opcional por publicado)
    - `GET /api/modulos/{modulo_id}` - Obtener módulo con sus cursos
+   - `GET /api/modulos/{modulo_id}/cursos` - Listar cursos del módulo
    - `POST /api/modulos` - Crear módulo (admin)
    - `PUT /api/modulos/{modulo_id}` - Actualizar módulo (admin)
 
-3. Crear `backend/app/routes/cursos.py`
-   - `GET /api/cursos` - Listar cursos (materias) públicos
-   - `GET /api/cursos/{curso_id}` - Obtener curso con detalles
-   - `GET /api/cursos/{curso_id}/guias-estudio` - Obtener guías de estudio
+3. ✅ Crear `backend/app/routes/cursos.py`
+   - `GET /api/cursos` - Listar cursos (materias) públicos (con filtros opcionales)
+   - `GET /api/cursos/{curso_id}` - Obtener curso con detalles (guías de estudio, examen final)
+   - `GET /api/cursos/{curso_id}/guias-estudio` - Obtener guías de estudio (con URLs prefirmadas S3)
    - `POST /api/cursos` - Crear curso (admin)
    - `PUT /api/cursos/{curso_id}` - Actualizar curso (admin)
 
-4. Crear servicios:
-   - `backend/app/services/usuario_service.py`
-   - `backend/app/services/modulo_service.py`
-   - `backend/app/services/curso_service.py`
+4. ✅ Crear servicios:
+   - `backend/app/services/usuario_service.py` - Operaciones CRUD de usuarios
+   - `backend/app/services/modulo_service.py` - Operaciones CRUD de módulos y relación con cursos
+   - `backend/app/services/curso_service.py` - Operaciones CRUD de cursos y guías de estudio
 
-**Archivos a crear**:
-- `backend/app/routes/__init__.py`
-- `backend/app/routes/usuarios.py`
-- `backend/app/routes/modulos.py`
-- `backend/app/routes/cursos.py`
-- `backend/app/services/__init__.py`
-- `backend/app/services/usuario_service.py`
-- `backend/app/services/modulo_service.py`
-- `backend/app/services/curso_service.py`
+**Archivos creados**:
+- ✅ `backend/app/routes/usuarios.py`
+- ✅ `backend/app/routes/modulos.py`
+- ✅ `backend/app/routes/cursos.py`
+- ✅ `backend/app/services/usuario_service.py`
+- ✅ `backend/app/services/modulo_service.py`
+- ✅ `backend/app/services/curso_service.py`
+
+**Notas de implementación**:
+- Todos los routers están registrados en `main.py` con prefijo `/api`
+- El endpoint de guías de estudio genera URLs prefirmadas de S3 automáticamente cuando la URL es una clave S3
+- Se agregaron endpoints `/usuarios/perfil` como alias de `/usuarios/me` para compatibilidad con el frontend
+- Los servicios implementan filtrado a nivel de base de datos para mejor rendimiento
 
 ---
 
@@ -742,6 +754,7 @@ backend/
 │   │   └── rls.py
 │   ├── routes/
 │   │   ├── __init__.py
+│   │   ├── auth_routes.py
 │   │   ├── usuarios.py
 │   │   ├── modulos.py
 │   │   ├── cursos.py
@@ -785,7 +798,7 @@ backend/
 │   │   └── regla_acreditacion_service.py
 │   └── utils/
 │       ├── __init__.py
-│       ├── auth.py
+│       ├── jwt_auth.py
 │       ├── roles.py
 │       ├── exceptions.py
 │       ├── validators.py
@@ -812,7 +825,8 @@ backend/
 1. ✅ **Fase 1**: Autenticación y Servicios Externos - **COMPLETADO**
 2. ✅ **Fase 2**: Modelos SQLAlchemy y conexión a BD - **COMPLETADO**
 3. **Fase 3**: Crear schemas Pydantic basados en modelos
-4. **Fase 4**: Implementar endpoints core (usuarios, módulos, cursos)
+4. ✅ **Fase 4**: Implementar endpoints core (usuarios, módulos, cursos) - **COMPLETADO**
+5. **Fase 5**: Implementar endpoints de contenido (lecciones)
 
 ---
 

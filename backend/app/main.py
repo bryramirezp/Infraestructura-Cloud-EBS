@@ -5,7 +5,26 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 import sys
-from app.config import settings
+import traceback
+
+# Importar settings (ahora con inicialización lazy que siempre funciona en desarrollo)
+try:
+    from app.config import settings
+except Exception as e:
+    print(f"ERROR: Failed to import settings: {e}", file=sys.stderr)
+    print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+    sys.exit(1)
+
+# Importar routers con manejo de errores
+try:
+    from app.routes.auth_routes import router as auth_router
+    from app.routes.usuarios import router as usuarios_router
+    from app.routes.modulos import router as modulos_router
+    from app.routes.cursos import router as cursos_router
+except Exception as e:
+    print(f"ERROR: Failed to import routers: {e}", file=sys.stderr)
+    print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+    sys.exit(1)
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
@@ -30,6 +49,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register auth router (Cognito routes: /auth/login, /auth/callback, /auth/refresh, /auth/logout)
+app.include_router(auth_router, prefix="/auth")
+
+# Register API routers (Fase 4: Usuarios, Módulos y Cursos)
+app.include_router(usuarios_router, prefix="/api")
+app.include_router(modulos_router, prefix="/api")
+app.include_router(cursos_router, prefix="/api")
 
 
 @app.exception_handler(StarletteHTTPException)

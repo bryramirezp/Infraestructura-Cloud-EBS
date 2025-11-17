@@ -109,7 +109,6 @@ yarn.lock
 *.sqlite3
 
 # Docker
-.dockerignore
 
 # Jupyter Notebook
 .ipynb_checkpoints

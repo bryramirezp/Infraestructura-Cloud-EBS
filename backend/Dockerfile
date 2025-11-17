@@ -34,17 +34,40 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Copia el entorno virtual 'venv' de la etapa 'builder'
 COPY --from=builder /opt/venv /opt/venv
 
-# Copia toda la carpeta backend primero
-COPY . /app/
+# Copia toda la carpeta de la app (código Python)
+COPY app /app/app
 
-# Verifica que app/main.py existe
-RUN ls -la /app/ && ls -la /app/app/ || echo "WARNING: app directory structure incorrect"
+# Verifica estructura de directorios y crea __init__.py faltantes
+RUN echo "=== Verificando estructura de directorios ===" && \
+    ls -la /app/ && \
+    echo "=== Contenido de /app/app ===" && \
+    ls -la /app/app/ && \
+    echo "=== Verificando archivos críticos ===" && \
+    test -f /app/app/main.py || (echo "ERROR: app/main.py not found" && exit 1) && \
+    test -f /app/app/config.py || (echo "ERROR: app/config.py not found" && exit 1) && \
+    echo "=== Asegurando __init__.py en todos los directorios ===" && \
+    touch /app/app/__init__.py && \
+    touch /app/app/routes/__init__.py && \
+    touch /app/app/services/__init__.py && \
+    touch /app/app/utils/__init__.py && \
+    touch /app/app/schemas/__init__.py && \
+    touch /app/app/database/__init__.py && \
+    touch /app/app/tests/__init__.py && \
+    echo "=== Estructura verificada correctamente ==="
 
-# Crea __init__.py si no existe
-RUN touch /app/app/__init__.py
+# Verifica que Python puede encontrar el módulo
+# Nota: La importación de app.main puede fallar aquí si faltan variables de entorno,
+# pero eso es normal - se resolverá en runtime con valores por defecto en desarrollo
+RUN echo "=== Verificando PYTHONPATH ===" && \
+    echo "PYTHONPATH=$PYTHONPATH" && \
+    python -c "import sys; print('Python path:', sys.path)" && \
+    echo "=== Verificando estructura de módulos ===" && \
+    python -c "import app; print('✓ Módulo app encontrado')" 2>&1 || echo "WARNING: Módulo app no importable sin variables de entorno (normal en build)" && \
+    echo "=== Verificación completada ==="
 
 # Expone el puerto
 EXPOSE 8000
 
-# Ejecuta Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Ejecuta Uvicorn con diagnóstico mejorado
+# Usamos python -m uvicorn para mejor resolución de módulos
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

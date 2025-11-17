@@ -31,9 +31,11 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-ebs_user}:${POSTGRES_PASSWORD:-ebs_password}@db:5432/${POSTGRES_DB:-ebs_db}
       AWS_REGION: ${AWS_REGION:-us-east-1}
-      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID}
-      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      # Valores por defecto para desarrollo si no están en .env
+      COGNITO_USER_POOL_ID: ${COGNITO_USER_POOL_ID:-dummy-pool-id}
+      COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-dummy-client-id}
+      COGNITO_REDIRECT_URI: ${COGNITO_REDIRECT_URI:-http://localhost:5173/auth/callback}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-dummy-bucket-name}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}

@@ -7,13 +7,14 @@
 - **Estilizado**: Tailwind CSS
 - **Estado**: React Query (TanStack Query)
 - **Routing**: React Router DOM
-- **Autenticación**: Amazon Cognito Identity JS
-- **API Client**: Fetch (nativo)
+- **Autenticación**: Amazon Cognito (Flujo Hosted UI + Cookies HTTP-only)
+- **API Client**: Fetch (nativo, sin tokens en headers)
 - **Validación**: Zod
-- **Mocking**: MSW (Mock Service Worker)
+- **Mocking**: MSW (desarrollo)
 - **Notificaciones**: Sonner
-- **Contenedorización**: Docker
-- **Despliegue**: AWS ECS Fargate
+- **Backend**: FastAPI con PostgreSQL + RLS
+- **Despliegue Frontend**: S3 + CloudFront (estático)
+- **Despliegue Backend**: ECS Fargate (Docker)
 
 ## System Prompt: Ingeniero Frontend Senior
 
@@ -26,7 +27,7 @@ Eres un **ingeniero frontend senior experto** especializado en el siguiente stac
 - **Estilos**: Tailwind CSS 3.4.1
 - **Estado**: TanStack React Query 5.83.0
 - **Routing**: React Router DOM 6.30.1
-- **Auth**: Amazon Cognito Identity JS 6.3.15 (directo, sin Amplify)
+- **Auth**: Amazon Cognito Hosted UI + Cookies HTTP-only (seguro)
 - **HTTP**: Fetch API nativo
 - **Validación**: Zod 3.23.8
 - **Formularios**: React Hook Form 7.53.0
@@ -55,17 +56,17 @@ Eres un **ingeniero frontend senior experto** especializado en el siguiente stac
    - Implementar optimistic updates cuando sea apropiado
    - Manejar estados de loading, error y success
 
-4. **Fetch API Nativo**
+4. **Fetch API Nativo con Cookies**
    - No usar librerías HTTP adicionales (Axios, etc.)
    - Centralizar lógica de requests en `api-client.ts`
-   - Manejo consistente de errores y headers
-   - Integración automática con Cognito para tokens
+   - Configurar `credentials: 'include'` para cookies HTTP-only
+   - Backend maneja autenticación vía cookies seguras (no tokens en headers)
 
-5. **Cognito Directo (Sin Amplify)**
-   - Usar `amazon-cognito-identity-js` directamente
-   - Funciones centralizadas en `shared/aws/cognito.ts`
-   - Obtener tokens antes de cada request
-   - Manejar renovación de tokens automáticamente
+5. **Cognito Hosted UI (Seguro)**
+   - Redirección a `/auth/login` del backend para iniciar flujo OAuth2 PKCE
+   - Backend maneja tokens en cookies HTTP-only seguras
+   - Frontend usa cookies para autenticación (sin tokens en localStorage)
+   - No manejo directo de tokens en el frontend (seguridad máxima)
 
 6. **Formularios con React Hook Form + Zod**
    - Validación con Zod schemas
@@ -150,42 +151,40 @@ src/
 
 ## Estado Actual de la Implementación
 
-### ✅ Migración de AWS Amplify a Cognito Directo - COMPLETADO
+### ✅ Migración a Cognito Hosted UI - COMPLETADO
 
-La migración de AWS Amplify a uso directo de Amazon Cognito Identity JS ha sido completada exitosamente.
+La migración a Cognito Hosted UI (sin manejo directo de tokens en frontend) ha sido completada exitosamente.
 
 #### Cambios Implementados
 
 1. **✅ Dependencias actualizadas**
-   - Instalado: `amazon-cognito-identity-js@6.3.15`
+   - Eliminado: `amazon-cognito-identity-js` (ya no se usa)
    - Eliminado: `aws-amplify`, `@aws-amplify/ui-react`
-   - Reducción de 259 paquetes en node_modules
+   - Reducción de 259+ paquetes en node_modules
 
-2. **✅ Archivo `cognito.ts` creado**
-   - Ubicación: `frontend/src/shared/aws/cognito.ts`
-   - Funciones implementadas:
-     - `signIn()` - Autenticación con Cognito
-     - `getAccessToken()` - Obtener token de acceso
-     - `getIdToken()` - Obtener ID token
-     - `signOut()` - Cerrar sesión
-     - `getCurrentUser()` - Obtener usuario actual
-     - `getUserPool()` - Obtener instancia del UserPool
+2. **✅ Archivo `cognito.ts` eliminado**
+   - Ya no se usa autenticación directa con Cognito Identity JS
+   - El frontend ahora usa redirecciones a `/auth/login` del backend
+   - El backend maneja todo el flujo OAuth2 PKCE con Cognito Hosted UI
 
 3. **✅ API Client refactorizado**
    - Archivo: `frontend/src/shared/api/api-client.ts`
    - Migrado de Amplify API a Fetch API nativo
    - Métodos HTTP (GET, POST, PUT, DELETE) funcionando con Fetch
-   - Integración con Cognito para autenticación automática
+   - NO envía tokens en headers (backend lee cookies HTTP-only)
+   - `credentials: 'include'` configurado para cookies
    - Manejo de errores mejorado
    - Query parameters correctamente manejados
 
 4. **✅ Configuración limpiada**
+   - Eliminado: `frontend/src/shared/aws/cognito.ts` (no necesario para Hosted UI)
    - Eliminado: `frontend/src/shared/config/aws.ts` (configuración de Amplify)
-   - Actualizado: `frontend/src/main.tsx` (eliminado import de aws.ts)
-   - Sin dependencias de Amplify en el código
+   - Actualizado: `frontend/src/main.tsx` (sin imports de aws.ts)
+   - Actualizado: `frontend/src/app/providers/AuthProvider.tsx` (exporta `useAuth`)
 
 5. **✅ Verificación completada**
    - Sin referencias a `aws-amplify` en el código fuente
+   - Sin referencias a `amazon-cognito-identity-js` en el código fuente
    - Sin errores de TypeScript
    - Sin errores de linter
    - Código listo para producción
@@ -198,11 +197,168 @@ La migración de AWS Amplify a uso directo de Amazon Cognito Identity JS ha sido
 - **Más control**: Uso directo de Cognito permite mayor flexibilidad
 - **Compatibilidad**: La API pública de `apiClient` no cambió, los componentes existentes no requieren modificación
 
-#### Próximos Pasos (Opcional)
+#### Estado Actual
 
-- Configurar variables de entorno para Cognito en producción
-- Integrar `AuthProvider` con Cognito real (actualmente usa mocks)
-- Probar autenticación end-to-end con backend
+- ✅ **Cognito Hosted UI implementado**: Frontend redirige a `/auth/login` del backend
+- ✅ **API Client sin tokens**: No envía `Authorization` headers, usa cookies
+- ✅ **AuthProvider funcionando**: Exporta `useAuth` correctamente
+- ⏳ **Integración pendiente**: Probar autenticación end-to-end con backend
+
+---
+
+## ✅ Sincronización con Backend (FastAPI) - IMPLEMENTADO
+
+### Arquitectura del Backend
+
+El backend es una **API RESTful completa** construida con FastAPI que incluye:
+
+- **Endpoints completos**: `/api/usuarios`, `/api/modulos`, `/api/cursos`, `/api/lecciones`, `/api/quizzes`, `/api/inscripciones`, `/api/certificados`, etc.
+- **Autenticación Cognito**: Flujo OAuth2 PKCE con hosted UI + cookies HTTP-only
+- **Base de datos**: PostgreSQL con Row Level Security (RLS)
+- **Seguridad**: JWT verification, RLS automático, triggers de negocio
+
+### ✅ Flujo de Autenticación Sincronizado - IMPLEMENTADO
+
+```
+Frontend → /auth/login (redirect) → Cognito Hosted UI → /auth/callback → Cookies HTTP-only
+Frontend → /api/* (requests sin tokens) → Backend lee cookies automáticamente → Respuestas
+```
+
+**Implementación verificada:**
+- ✅ **`use-auth.ts`**: Función `login()` redirige a `/auth/login` del backend (línea 78-79)
+- ✅ **`api-client.ts`**: NO envía tokens en headers `Authorization: Bearer` (línea 31-32)
+- ✅ **`api-client.ts`**: Configurado `credentials: 'include'` para cookies (línea 37)
+- ✅ **`endpoints.ts`**: Endpoints AUTH configurados (`/auth/login`, `/auth/logout`, `/auth/callback`, `/auth/profile`, `/auth/refresh`)
+- ✅ **`use-auth.ts`**: `checkAuth()` llama a `/auth/profile` para verificar sesión (línea 45)
+- ✅ **`use-auth.ts`**: `logout()` llama a `/auth/logout` del backend (línea 87)
+- ✅ **`use-auth.ts`**: `refreshAuth()` llama a `/auth/refresh` para refrescar tokens (línea 116)
+
+**Beneficios:**
+- ✅ **Seguridad máxima**: Cookies HTTP-only, servidor controla autenticación
+- ✅ **Backend completo**: El backend maneja TODA la lógica de negocio
+- ✅ **RLS automático**: Filtros de seguridad a nivel de base de datos
+- ✅ **Arquitectura limpia**: Frontend solo consume API, no maneja auth
+
+### ✅ Cambios Implementados en Frontend
+
+1. **✅ Remover Cognito Identity JS completamente** - Eliminado `amazon-cognito-identity-js` y `cognito.ts`
+2. **✅ Cambiar AuthProvider**: Usa redirecciones a `/auth/login` del backend (implementado en `use-auth.ts`)
+3. **✅ Modificar api-client.ts**: NO envía `Authorization: Bearer <token>` (backend lee cookies HTTP-only)
+4. **⏳ Configurar VITE_API_URL** apuntando al backend (pendiente configuración de variables de entorno)
+5. **✅ Manejar estados de autenticación** basados en responses del backend (implementado en `use-auth.ts`)
+
+### Variables de Entorno
+
+```env
+# Desarrollo
+VITE_API_URL=http://localhost:8000/api
+VITE_APP_URL=http://localhost:5173
+
+# Producción
+VITE_API_URL=https://api.ebs.edu/api
+VITE_APP_URL=https://app.ebs.edu
+```
+
+---
+
+## 🚀 Despliegue: S3 + CloudFront (Ultra Económico)
+
+### Arquitectura de Despliegue
+
+```
+Usuario → CloudFront (CDN) → S3 (Frontend estático)
+                    ↓
+              API Gateway → ECS Fargate (Backend)
+```
+
+**Costo aproximado:** $0.50-2/mes
+
+### Pipeline de Despliegue
+
+**1. Build del Frontend:**
+```bash
+npm run build  # Genera carpeta 'dist/' con archivos estáticos
+```
+
+**2. Upload a S3:**
+```bash
+aws s3 sync dist/ s3://ebs-frontend-bucket --delete
+```
+
+**3. Invalidate CloudFront:**
+```bash
+aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+```
+
+### Configuración CloudFront
+
+- **Origin**: S3 bucket
+- **Default Root Object**: `index.html`
+- **Error Pages**: Redirigir 404 a `index.html` (SPA routing)
+- **CORS**: Configurado para dominio del backend
+
+### Configuración CORS en Backend
+
+```python
+# FastAPI main.py
+CORS_ORIGINS = [
+    "http://localhost:5173",  # Desarrollo
+    "https://app.ebs.edu",    # Producción
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,  # Para cookies
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+### Cookies Cross-Domain
+
+Para cookies HTTP-only entre dominios:
+- `app.ebs.edu` (Frontend en S3/CloudFront)
+- `api.ebs.edu` (Backend en ECS)
+
+```python
+# Configuración cookies en backend
+response.set_cookie(
+    "access_token",
+    access_token,
+    httponly=True,
+    secure=True,
+    samesite="none",  # Cross-domain
+    domain=".ebs.edu",  # Dominio base
+)
+```
+
+---
+
+## 🎯 Implementación: Adaptar Frontend al Backend
+
+### 🚀 Implementación
+¿Quieres que proceda con la implementación? Los cambios serían:
+
+**Backend:**
+- Verificar configuración CORS para frontend
+- Endpoint `/auth/tokens` opcional si frontend necesita tokens
+
+**Frontend:**
+- Remover `amazon-cognito-identity-js`
+- Cambiar `AuthProvider` para usar redirecciones
+- Modificar `api-client.ts` para no enviar tokens
+- Configurar variables de entorno
+
+### 📋 Checklist de Sincronización
+
+- [ ] Configurar CORS en backend para dominio del frontend
+- [ ] Actualizar variables de entorno (`VITE_API_URL`)
+- [ ] Remover Cognito Identity JS del frontend
+- [ ] Cambiar AuthProvider para usar `/auth/login` del backend
+- [ ] Modificar api-client para no enviar tokens en headers
+- [ ] Configurar despliegue S3 + CloudFront
+- [ ] Probar integración completa: Login → API calls → Logout
 
 ---
 
@@ -764,9 +920,9 @@ export const respuestaSchema = z.object({
 
 ---
 
-## 🔄 Fase 2: Endpoints API y Servicios
+## ✅ Fase 2: Endpoints API y Servicios - COMPLETADO
 
-### 2.1 Actualizar `src/shared/api/endpoints.ts`
+### 2.1 ✅ Actualizar `src/shared/api/endpoints.ts` - COMPLETADO
 
 ```typescript
 export const API_ENDPOINTS = {
@@ -860,7 +1016,7 @@ export const API_ENDPOINTS = {
 };
 ```
 
-### 2.2 Extender `api-client.ts` con métodos específicos
+### 2.2 ✅ Extendido `api-client.ts` con métodos específicos - COMPLETADO
 
 ```typescript
 // Agregar métodos al APIClient existente
@@ -908,11 +1064,11 @@ async descargarCertificado(certificadoId: string) {
 
 ---
 
-## 🔄 Fase 3: Hooks y Lógica de Negocio
+## ✅ Fase 3: Hooks y Lógica de Negocio - COMPLETADO
 
-### 3.1 Hooks de React Query
+### 3.1 ✅ Hooks de React Query
 
-#### `src/entities/module/api/use-module.ts` - Crear
+#### ✅ `src/entities/module/api/use-module.ts` - COMPLETADO
 
 ```typescript
 import { useQuery } from '@tanstack/react-query';
@@ -935,7 +1091,7 @@ export const useModulo = (moduloId: string) => {
 };
 ```
 
-#### `src/entities/course/api/use-course.ts` - Crear
+#### ✅ `src/entities/course/api/use-course.ts` - COMPLETADO
 
 ```typescript
 export const useInscribirEnCurso = () => {
@@ -948,7 +1104,7 @@ export const useInscribirEnCurso = () => {
 };
 ```
 
-#### `src/entities/quiz/api/use-quiz.ts` - Crear
+#### ✅ `src/entities/quiz/api/use-quiz.ts` - COMPLETADO
 
 ```typescript
 export const useIniciarQuiz = () => {
@@ -969,9 +1125,9 @@ export const useEnviarQuiz = () => {
 };
 ```
 
-### 3.2 Lógica de Validación de Reglas de Negocio
+### 3.2 🔄 Lógica de Validación de Reglas de Negocio
 
-#### `src/shared/lib/quiz-rules.ts` - Crear
+#### ⏳ `src/shared/lib/quiz-rules.ts` - PENDIENTE
 
 ```typescript
 import type { ReglaAcreditacion, Intento } from '@/entities';
@@ -1012,6 +1168,36 @@ export const validarPrerequisitosExamenFinal = async (
   };
 };
 ```
+
+#### ✅ Resumen de Hooks Implementados
+
+Todos los hooks de React Query han sido implementados:
+
+**Sprint 1 (Core):**
+- ✅ `use-module.ts` - Módulos
+- ✅ `use-course.ts` - Cursos (Materias)
+- ✅ `use-enrollment.ts` - Inscripciones
+
+**Sprint 2 (Contenido):**
+- ✅ `use-lesson.ts` - Lecciones
+
+**Sprint 3 (Evaluaciones):**
+- ✅ `use-quiz.ts` - Quizzes
+- ✅ `use-exam.ts` - Exámenes Finales
+- ✅ `use-attempt.ts` - Intentos
+- ✅ `use-question.ts` - Preguntas
+
+**Sprint 4 (Resto):**
+- ✅ `use-certificate.ts` - Certificados
+- ✅ `use-progress.ts` - Progreso
+- ✅ `use-user.ts` - Usuarios
+- ✅ `use-forum.ts` - Foro
+- ✅ `use-notification.ts` - Notificaciones
+- ✅ `use-accreditation.ts` - Reglas de Acreditación
+- ✅ `use-reports.ts` - Reportes (en `shared/api/`)
+- ✅ `use-system.ts` - Sistema (en `shared/api/`)
+
+**Total: 16 archivos de hooks implementados**
 
 ---
 
@@ -1208,12 +1394,28 @@ VITE_COGNITO_CLIENT_ID=xxxxx
 VITE_USE_MOCKS=false
 ```
 
-### 7.2 Build y Optimización
+### 7.2 Build y Despliegue
 
-- Build de producción optimizado
-- Verificación de bundle size
-- Optimización de imágenes
-- CDN para assets estáticos
+#### Build de Producción
+```bash
+npm run build  # Vite genera archivos estáticos optimizados
+```
+
+#### Despliegue S3 + CloudFront
+```bash
+# Upload a S3
+aws s3 sync dist/ s3://ebs-frontend-bucket --delete
+
+# Invalidate CloudFront cache
+aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+```
+
+#### Optimizaciones
+- ✅ Bundle size optimizado con Vite
+- ✅ Code splitting automático
+- ✅ CDN global con CloudFront
+- ✅ Compresión automática
+- ✅ Cache eficiente
 
 ### 7.3 Monitoreo
 
@@ -1241,17 +1443,17 @@ VITE_USE_MOCKS=false
 - [x] Tipos de Reglas de Acreditación
 - [x] Schemas Zod para validación
 
-### 🔄 Fase 2: API
-- [ ] Endpoints actualizados
-- [ ] Métodos en api-client
-- [ ] Manejo de errores
-- [ ] Type safety en requests/responses
+### ✅ Fase 2: API
+- [x] Endpoints actualizados
+- [x] Métodos en api-client
+- [x] Manejo de errores
+- [x] Type safety en requests/responses (parcial, falta tipar responses del backend)
 
-### 🔄 Fase 3: Hooks
-- [ ] Hooks de React Query para cada entidad
-- [ ] Mutations para acciones (inscribir, enviar quiz, etc.)
-- [ ] Validación de reglas de negocio
-- [ ] Cache management
+### ✅ Fase 3: Hooks
+- [x] Hooks de React Query para cada entidad
+- [x] Mutations para acciones (inscribir, enviar quiz, etc.)
+- [ ] Validación de reglas de negocio (pendiente: quiz-rules.ts)
+- [x] Cache management
 
 ### 🔄 Fase 4: UI
 - [ ] Páginas de módulos
@@ -2282,6 +2484,16 @@ docker build -t ebs-frontend:latest .
 - **RF-07**: Comparación de progreso (endpoint implementado)
 - **RF-12**: Rutas protegidas por roles (ProtectedRoute)
 
+### Checklist de Sincronización con Backend
+
+- [ ] Configurar CORS en backend para dominio del frontend
+- [ ] Actualizar variables de entorno (`VITE_API_URL`, `VITE_APP_URL`)
+- [x] Remover `amazon-cognito-identity-js` del frontend ✅
+- [x] Cambiar `AuthProvider` para usar redirecciones a `/auth/login` ✅
+- [x] Modificar `api-client.ts` para no enviar tokens en headers ✅
+- [ ] Configurar despliegue S3 + CloudFront
+- [ ] Probar integración completa: Login → API calls → Logout
+
 ### Checklist Pre-Producción
 
 - [ ] Todas las rutas protegidas con `ProtectedRoute`
@@ -2290,8 +2502,9 @@ docker build -t ebs-frontend:latest .
 - [ ] Responsividad en móvil (usar `use-mobile`)
 - [ ] Variables de entorno configuradas
 - [ ] MSW desactivado en producción
-- [ ] Cognito configurado correctamente
 - [ ] Build de producción sin errores
 - [ ] CORS configurado en backend
 - [ ] HTTPS habilitado en producción
+- [ ] Despliegue S3 + CloudFront configurado
+- [ ] Pipeline CI/CD para build automático
 

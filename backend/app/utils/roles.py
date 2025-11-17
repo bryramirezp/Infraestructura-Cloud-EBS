@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from typing import List, Optional
-from app.utils.auth import get_current_user, get_user_groups_from_token
+from app.utils.jwt_auth import get_current_user, get_user_groups_from_token
 from app.utils.exceptions import AuthorizationError
 import logging
 

@@ -1,79 +1,166 @@
 /**
  * API Endpoints Configuration
- * 
+ *
  * Centraliza todas las URLs de endpoints de la API.
- * En producción, estas URLs vendrán de variables de entorno.
+ * Alineado con la estructura del backend FastAPI y la base de datos PostgreSQL.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'https://api.example.com';
+const API_BASE_URL = (import.meta as any).env.VITE_API_GATEWAY_URL || 'https://api.example.com';
 
 export const API_ENDPOINTS = {
-  // Authentication
+  // Authentication (Cognito Hosted UI + Backend)
   AUTH: {
-    LOGIN: '/auth/login',
-    LOGOUT: '/auth/logout',
-    REFRESH: '/auth/refresh',
-    REGISTER: '/auth/register',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
+    LOGIN: '/auth/login',      // Redirección a Cognito Hosted UI
+    LOGOUT: '/auth/logout',     // Redirección a Cognito logout
+    CALLBACK: '/auth/callback',  // Callback de Cognito con tokens
+    REFRESH: '/auth/refresh',   // Refresh tokens
+    TOKENS: '/auth/tokens',     // Obtener tokens del usuario actual (opcional)
+    PROFILE: '/auth/profile',    // Perfil del usuario autenticado
   },
 
-  // Users
-  USERS: {
-    BASE: '/users',
-    BY_ID: (id: string | number) => `/users/${id}`,
-    PROFILE: '/users/profile',
-    UPDATE_PROFILE: '/users/profile',
+  // Módulos
+  MODULOS: {
+    BASE: '/modulos',
+    BY_ID: (id: string) => `/modulos/${id}`,
+    CURSOS: (id: string) => `/modulos/${id}/cursos`,
+    INSCRIPCIONES: (id: string) => `/modulos/${id}/inscripciones`,
   },
 
-  // Courses
-  COURSES: {
-    BASE: '/courses',
-    BY_ID: (id: string | number) => `/courses/${id}`,
-    ENROLL: (id: string | number) => `/courses/${id}/enroll`,
-    UNENROLL: (id: string | number) => `/courses/${id}/unenroll`,
-    PROGRESS: (id: string | number) => `/courses/${id}/progress`,
-    CONTENT: (id: string | number) => `/courses/${id}/content`,
+  // Cursos (Materias)
+  CURSOS: {
+    BASE: '/cursos',
+    BY_ID: (id: string) => `/cursos/${id}`,
+    INSCRIBIR: (id: string) => `/cursos/${id}/inscribir`,
+    DESINSCRIBIR: (id: string) => `/cursos/${id}/desinscribir`,
+    PROGRESO: (id: string) => `/cursos/${id}/progreso`,
+    GUIAS_ESTUDIO: (id: string) => `/cursos/${id}/guias-estudio`,
+    EXAMEN_FINAL: (id: string) => `/cursos/${id}/examen-final`,
+    ESTADISTICAS: (id: string) => `/cursos/${id}/estadisticas`,
   },
 
-  // Assignments
-  ASSIGNMENTS: {
-    BASE: '/assignments',
-    BY_ID: (id: string | number) => `/assignments/${id}`,
-    SUBMIT: (id: string | number) => `/assignments/${id}/submit`,
-    BY_COURSE: (courseId: string | number) => `/assignments?courseId=${courseId}`,
+  // Lecciones
+  LECCIONES: {
+    BASE: '/lecciones',
+    BY_ID: (id: string) => `/lecciones/${id}`,
+    CONTENIDO: (id: string) => `/lecciones/${id}/contenido`,
+    BY_MODULO: (moduloId: string) => `/lecciones?modulo_id=${moduloId}`,
+    BY_CURSO: (cursoId: string) => `/lecciones?curso_id=${cursoId}`,
+    QUIZ: (id: string) => `/lecciones/${id}/quiz`,
   },
 
-  // Exams
-  EXAMS: {
-    BASE: '/exams',
-    BY_ID: (id: string | number) => `/exams/${id}`,
-    SUBMIT: (id: string | number) => `/exams/${id}/submit`,
-    RESULTS: (id: string | number) => `/exams/${id}/results`,
+  // Quizzes
+  QUIZZES: {
+    BASE: '/quizzes',
+    BY_ID: (id: string) => `/quizzes/${id}`,
+    PREGUNTAS: (id: string) => `/quizzes/${id}/preguntas`,
+    INICIAR: (id: string) => `/quizzes/${id}/iniciar`,
+    ENVIAR: (id: string) => `/quizzes/${id}/enviar`,
+    RESULTADOS: (id: string) => `/quizzes/${id}/resultados`,
+    INTENTOS: (id: string) => `/quizzes/${id}/intentos`,
   },
 
-  // Grades
-  GRADES: {
-    BASE: '/grades',
-    BY_ID: (id: string | number) => `/grades/${id}`,
-    BY_COURSE: (courseId: string | number) => `/grades?courseId=${courseId}`,
-    BY_STUDENT: (studentId: string | number) => `/grades?studentId=${studentId}`,
+  // Exámenes Finales
+  EXAMENES_FINALES: {
+    BASE: '/examenes-finales',
+    BY_ID: (id: string) => `/examenes-finales/${id}`,
+    BY_CURSO: (cursoId: string) => `/examenes-finales?curso_id=${cursoId}`,
+    PREGUNTAS: (id: string) => `/examenes-finales/${id}/preguntas`,
+    INICIAR: (id: string) => `/examenes-finales/${id}/iniciar`,
+    ENVIAR: (id: string) => `/examenes-finales/${id}/enviar`,
+    RESULTADOS: (id: string) => `/examenes-finales/${id}/resultados`,
   },
 
-  // Reports
-  REPORTS: {
-    BASE: '/reports',
-    DASHBOARD: '/reports/dashboard',
-    STUDENT_PROGRESS: (studentId: string | number) => `/reports/students/${studentId}/progress`,
-    COURSE_ANALYTICS: (courseId: string | number) => `/reports/courses/${courseId}/analytics`,
+  // Intentos
+  INTENTOS: {
+    BASE: '/intentos',
+    BY_ID: (id: string) => `/intentos/${id}`,
+    BY_QUIZ: (quizId: string) => `/intentos?quiz_id=${quizId}`,
+    BY_EXAMEN: (examenId: string) => `/intentos?examen_final_id=${examenId}`,
+    BY_USUARIO: (usuarioId: string) => `/intentos?usuario_id=${usuarioId}`,
+    RESULTADO: (id: string) => `/intentos/${id}/resultado`,
+    PERMITIR_NUEVO: (id: string) => `/intentos/${id}/permitir-nuevo`,
+  },
+
+  // Inscripciones
+  INSCRIPCIONES: {
+    BASE: '/inscripciones',
+    BY_ID: (id: string) => `/inscripciones/${id}`,
+    BY_USUARIO: (usuarioId: string) => `/inscripciones?usuario_id=${usuarioId}`,
+    BY_CURSO: (cursoId: string) => `/inscripciones?curso_id=${cursoId}`,
+    ACTUALIZAR_ESTADO: (id: string) => `/inscripciones/${id}/estado`,
+    CERTIFICADO: (id: string) => `/inscripciones/${id}/certificado`,
+  },
+
+  // Certificados
+  CERTIFICADOS: {
+    BASE: '/certificados',
+    BY_ID: (id: string) => `/certificados/${id}`,
+    BY_INSCRIPCION: (inscripcionId: string) => `/certificados?inscripcion_curso_id=${inscripcionId}`,
+    BY_USUARIO: (usuarioId: string) => `/certificados?usuario_id=${usuarioId}`,
+    DESCARGAR: (id: string) => `/certificados/${id}/descargar`,
+    VERIFICAR: (hash: string) => `/certificados/verificar/${hash}`,
+    GENERAR: (inscripcionId: string) => `/certificados/generar/${inscripcionId}`,
+  },
+
+  // Usuarios
+  USUARIOS: {
+    BASE: '/usuarios',
+    BY_ID: (id: string) => `/usuarios/${id}`,
+    PERFIL: '/usuarios/perfil',
+    ACTUALIZAR_PERFIL: '/usuarios/perfil',
+    ROLES: (id: string) => `/usuarios/${id}/roles`,
+    ASIGNAR_ROL: (id: string) => `/usuarios/${id}/roles`,
+    ELIMINAR_ROL: (id: string, rolId: string) => `/usuarios/${id}/roles/${rolId}`,
+  },
+
+  // Foro
+  FORO: {
+    BASE: '/foro',
+    BY_CURSO: (cursoId: string) => `/foro?curso_id=${cursoId}`,
+    BY_LECCION: (leccionId: string) => `/foro?leccion_id=${leccionId}`,
+    BY_USUARIO: (usuarioId: string) => `/foro?usuario_id=${usuarioId}`,
+    CREAR: () => '/foro',
+    ACTUALIZAR: (id: string) => `/foro/${id}`,
+    ELIMINAR: (id: string) => `/foro/${id}`,
+  },
+
+  // Reglas de Acreditación
+  REGLAS_ACREDITACION: {
+    BASE: '/reglas-acreditacion',
+    BY_ID: (id: string) => `/reglas-acreditacion/${id}`,
+    BY_CURSO: (cursoId: string) => `/reglas-acreditacion?curso_id=${cursoId}`,
+    BY_QUIZ: (quizId: string) => `/reglas-acreditacion?quiz_id=${quizId}`,
+    BY_EXAMEN: (examenId: string) => `/reglas-acreditacion?examen_final_id=${examenId}`,
+  },
+
+  // Reportes y Estadísticas
+  REPORTES: {
+    BASE: '/reportes',
+    DASHBOARD: '/reportes/dashboard',
+    PROGRESO_USUARIO: (usuarioId: string) => `/reportes/usuarios/${usuarioId}/progreso`,
+    ESTADISTICAS_CURSO: (cursoId: string) => `/reportes/cursos/${cursoId}/estadisticas`,
+    COMPARACION_GRUPO: (cursoId: string) => `/reportes/cursos/${cursoId}/comparacion`,
+    CERTIFICADOS_EMITIDOS: '/reportes/certificados-emitidos',
+    ACTIVIDAD_USUARIOS: '/reportes/actividad-usuarios',
   },
 
   // Admin
   ADMIN: {
-    USERS: '/admin/users',
-    COURSES: '/admin/courses',
-    SETTINGS: '/admin/settings',
-    STATS: '/admin/stats',
+    USUARIOS: '/admin/usuarios',
+    CURSOS: '/admin/cursos',
+    MODULOS: '/admin/modulos',
+    INSCRIPCIONES: '/admin/inscripciones',
+    CONFIGURACION: '/admin/configuracion',
+    ESTADISTICAS: '/admin/estadisticas',
+    ROLES: '/admin/roles',
+    PERMISOS: '/admin/permisos',
+  },
+
+  // Sistema (Endpoints de mantenimiento y salud)
+  SISTEMA: {
+    HEALTH: '/health',
+    VERSION: '/version',
+    METRICS: '/metrics',
   },
 } as const;
 

@@ -1,8 +1,6 @@
 # EBS Online Platform
 
 Plataforma de educación en línea.
-
-✅✅ Cognito configuration fields added to `backend/app/config.py` (PKCE + HTTP-only cookies)
 ## Instalación
 
 ### Frontend
