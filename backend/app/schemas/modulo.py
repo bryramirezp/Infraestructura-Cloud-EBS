@@ -32,7 +32,7 @@ class ModuloResponse(ModuloBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ModuloCursoItem(BaseModel):
@@ -40,15 +40,11 @@ class ModuloCursoItem(BaseModel):
     slot: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ModuloDetailResponse(ModuloResponse):
     cursos: List[ModuloCursoItem] = []
 
     class Config:
-        orm_mode = True
-
-
-ModuloCursoItem.update_forward_refs()
-ModuloDetailResponse.update_forward_refs()
+        from_attributes = True

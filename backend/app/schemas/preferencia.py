@@ -11,9 +11,21 @@ class PreferenciaNotificacionBase(BaseModel):
     email_resultados: Optional[bool] = None
 
 
+class PreferenciaNotificacionCreate(BaseModel):
+    email_recordatorios: Optional[bool] = None
+    email_motivacion: Optional[bool] = None
+    email_resultados: Optional[bool] = None
+
+
+class PreferenciaNotificacionUpdate(BaseModel):
+    email_recordatorios: Optional[bool] = None
+    email_motivacion: Optional[bool] = None
+    email_resultados: Optional[bool] = None
+
+
 class PreferenciaNotificacionResponse(PreferenciaNotificacionBase):
     id: uuid.UUID
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

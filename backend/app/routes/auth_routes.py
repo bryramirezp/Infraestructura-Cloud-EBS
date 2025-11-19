@@ -228,6 +228,84 @@ async def get_tokens(request: Request):
     }
 
 
+@router.post("/set-tokens")
+async def set_tokens(request: Request):
+    """Set authentication tokens as HTTP-only cookies from request body.
+    Used when frontend authenticates directly with Cognito (e.g., NEW_PASSWORD_REQUIRED flow).
+    """
+    try:
+        body = await request.json()
+        access_token = body.get("access_token")
+        refresh_token = body.get("refresh_token")
+        id_token = body.get("id_token")
+        
+        if not access_token:
+            raise AuthenticationError("Missing access_token in request body")
+        
+        # Validate access token by decoding it
+        try:
+            public_key = await get_rsa_key(access_token)
+            payload = jwt.decode(
+                access_token,
+                public_key,
+                algorithms=["RS256"],
+                audience=None,
+                issuer=settings.cognito_issuer,
+                options={"verify_signature": True, "verify_aud": False, "verify_exp": True},
+            )
+        except (InvalidTokenError, DecodeError, Exception):
+            raise AuthenticationError("Invalid access token")
+        
+        role = get_user_role(payload)
+        
+        # Set cookies
+        response = JSONResponse({
+            "user_id": payload.get("sub"),
+            "email": payload.get("email"),
+            "name": payload.get("name"),
+            "role": role.value if role else "UNKNOWN",
+            "groups": payload.get("cognito:groups", []),
+        })
+        
+        if refresh_token:
+            response.set_cookie(
+                "refresh_token",
+                refresh_token,
+                max_age=settings.cookie_refresh_max_age,
+                httponly=True,
+                secure=settings.cookie_secure,
+                samesite=settings.cookie_samesite,
+                domain=settings.cookie_domain,
+            )
+        
+        response.set_cookie(
+            "access_token",
+            access_token,
+            max_age=settings.cookie_access_max_age,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            domain=settings.cookie_domain,
+        )
+        
+        if id_token:
+            response.set_cookie(
+                "id_token",
+                id_token,
+                max_age=settings.cookie_access_max_age,
+                httponly=True,
+                secure=settings.cookie_secure,
+                samesite=settings.cookie_samesite,
+                domain=settings.cookie_domain,
+            )
+        
+        return response
+    except Exception as e:
+        if isinstance(e, AuthenticationError):
+            raise
+        raise AuthenticationError(f"Failed to set tokens: {str(e)}")
+
+
 @router.get("/profile")
 async def get_profile(request: Request):
     """Get current user profile from access token."""

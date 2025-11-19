@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
     REFRESH: '/auth/refresh',   // Refresh tokens
     TOKENS: '/auth/tokens',     // Obtener tokens del usuario actual (opcional)
     PROFILE: '/auth/profile',    // Perfil del usuario autenticado
+    SET_TOKENS: '/auth/set-tokens', // Enviar tokens al backend para establecer cookies
   },
 
   // Módulos

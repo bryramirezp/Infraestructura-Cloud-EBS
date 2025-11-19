@@ -30,7 +30,7 @@ class CursoResponse(CursoBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CursoDetailResponse(CursoResponse):
@@ -38,7 +38,4 @@ class CursoDetailResponse(CursoResponse):
     guias_estudio: List[GuiaEstudioResponse] = []
 
     class Config:
-        orm_mode = True
-
-
-CursoDetailResponse.update_forward_refs()
+        from_attributes = True

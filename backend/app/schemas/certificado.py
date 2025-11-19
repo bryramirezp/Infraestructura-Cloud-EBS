@@ -19,4 +19,4 @@ class CertificadoResponse(CertificadoBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

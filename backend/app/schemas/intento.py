@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -25,7 +25,7 @@ class IntentoResponse(IntentoBase):
     actualizado_en: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class IntentoPreguntaBase(BaseModel):
@@ -40,3 +40,41 @@ class RespuestaBase(BaseModel):
     respuesta_texto: Optional[str] = None
     opcion_id: Optional[uuid.UUID] = None
     respuesta_bool: Optional[bool] = None
+
+
+class RespuestaCreate(BaseModel):
+    pregunta_id: uuid.UUID
+    respuesta_texto: Optional[str] = None
+    opcion_id: Optional[uuid.UUID] = None
+    respuesta_bool: Optional[bool] = None
+
+
+class RespuestaResponse(RespuestaBase):
+    id: uuid.UUID
+    creado_en: Optional[datetime] = None
+    actualizado_en: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class IntentoSubmission(BaseModel):
+    """Schema para enviar respuestas de un intento"""
+    respuestas: List[RespuestaCreate]
+
+
+class IntentoResult(BaseModel):
+    """Schema para resultado de un intento"""
+    intento_id: uuid.UUID
+    puntaje: Optional[Decimal] = None
+    puntaje_maximo: Optional[Decimal] = None
+    porcentaje: Optional[Decimal] = None
+    resultado: Optional[ResultadoIntento] = None
+    aprobado: bool = False
+    min_score_aprobatorio: Decimal
+    preguntas_correctas: int = 0
+    total_preguntas: int = 0
+    respuestas: List[RespuestaResponse] = []
+
+    class Config:
+        from_attributes = True

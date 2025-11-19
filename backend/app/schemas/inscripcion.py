@@ -12,6 +12,15 @@ class InscripcionBase(BaseModel):
     estado: Optional[EstadoInscripcion] = EstadoInscripcion.ACTIVA
 
 
+class InscripcionCreate(BaseModel):
+    curso_id: uuid.UUID
+    fecha_inscripcion: Optional[date] = None
+
+
+class InscripcionUpdate(BaseModel):
+    estado: Optional[EstadoInscripcion] = None
+
+
 class InscripcionResponse(InscripcionBase):
     id: uuid.UUID
     acreditado: bool
@@ -21,4 +30,4 @@ class InscripcionResponse(InscripcionBase):
     actualizado_en: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

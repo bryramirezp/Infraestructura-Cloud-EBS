@@ -1,23 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuthContext } from '@/app/providers/AuthProvider';
 import { useTheme } from '@/app/styles/theme';
-// Temporarily remove logo imports until paths are fixed
-// import logoLight from '../../assets/images/Logo Modo Claro.png';
-// import logoDark from '../../assets/images/Logo Modo Oscuro.png';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import logoLight from '@/assets/images/Logo Modo Claro.png';
+import logoDark from '@/assets/images/Logo Modo Oscuro.png';
+
+// Esquema de validación para el formulario de login
+const loginSchema = z.object({
+  email: z.string().email('Email inválido').min(1, 'El email es requerido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, isLoading, login, error } = useAuthContext();
   const { isDark, mounted } = useTheme();
-  
-  // Logo según el tema - temporarily use placeholder
-  // const logo = isDark ? logoDark : logoLight;
-  const logo = null; // Will show text placeholder instead
+  const logo = mounted ? (isDark ? logoDark : logoLight) : logoLight;
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Configurar react-hook-form
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
   // Verificar si hay parámetros en la URL (ej: después de logout, error, etc.)
   useEffect(() => {
@@ -63,9 +80,17 @@ export const LoginPage: React.FC = () => {
     );
   }
 
-  const handleLogin = () => {
-    // Redirigir al endpoint de login del backend (Cognito Hosted UI)
-    login();
+  const handleLogin = async (data: LoginFormData) => {
+    try {
+      setIsSubmitting(true);
+      setMessage('');
+      await login(data.email, data.password);
+    } catch (err) {
+      // El error ya está manejado en el hook useAuth
+      console.error('Error en login:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -85,17 +110,11 @@ export const LoginPage: React.FC = () => {
           <div>
             <div className="flex justify-center">
               {mounted ? (
-                logo ? (
-                  <img
-                    src={logo}
-                    alt="Escuela Bíblica Salem"
-                    className="h-12 w-12 object-contain transition-opacity duration-200"
-                  />
-                ) : (
-                  <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold text-xl">EBS</span>
-                  </div>
-                )
+                <img
+                  src={logo}
+                  alt="Escuela Bíblica Salem"
+                  className="h-12 w-12 object-contain transition-opacity duration-200"
+                />
               ) : (
                 <div className="h-12 w-12 bg-muted rounded-lg animate-pulse"></div>
               )}
@@ -133,27 +152,98 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
           
-          <div className="space-y-6">
-            {/* Información de autenticación */}
-            <div className="bg-muted/50 border border-border rounded-lg p-4">
-              <h3 className="text-sm font-medium text-foreground mb-2 flex items-center">
-                <AlertCircle className="h-4 w-4 mr-2 text-primary" />
-                Autenticación Segura
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Utilizamos Amazon Cognito para proteger tu cuenta. Al hacer clic en "Iniciar Sesión", 
-                serás redirigido a la página de inicio de sesión segura de Amazon.
-              </p>
+          <form onSubmit={handleSubmit(handleLogin)} className="space-y-6">
+            {/* Campo de Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
+                Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  {...register('email')}
+                  className={`block w-full pl-10 pr-3 py-2 border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.email ? 'border-destructive' : 'border-border'
+                  }`}
+                  placeholder="tu@email.com"
+                  disabled={isSubmitting}
+                />
+              </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>
+              )}
             </div>
 
+            {/* Campo de Contraseña */}
             <div>
-              <button
-                onClick={handleLogin}
-                className="theme-button w-full py-3 px-4 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring flex items-center justify-center space-x-2"
-              >
-                <BookOpen className="h-5 w-5" />
-                <span>Iniciar Sesión con Amazon Cognito</span>
-              </button>
+              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
+                Contraseña
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  {...register('password')}
+                  className={`block w-full pl-10 pr-10 py-2 border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
+                    errors.password ? 'border-destructive' : 'border-border'
+                  }`}
+                  placeholder="••••••••"
+                  disabled={isSubmitting}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
+                  disabled={isSubmitting}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>
+              )}
+            </div>
+
+            {/* Botón de Submit */}
+            <button
+              type="submit"
+              disabled={isSubmitting || isLoading}
+              className="theme-button w-full py-3 px-4 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Iniciando sesión...</span>
+                </>
+              ) : (
+                <span>Iniciar Sesión</span>
+              )}
+            </button>
+          </form>
+
+          <div className="space-y-4">
+            {/* Credenciales de prueba */}
+            <div className="bg-muted/50 border border-border rounded-lg p-3 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Credenciales de prueba:</p>
+              <p className="text-sm font-mono text-foreground">
+                <span className="font-semibold">Email:</span> user@example.com
+              </p>
+              <p className="text-sm font-mono text-foreground">
+                <span className="font-semibold">Contraseña:</span> Usuario123.
+              </p>
             </div>
 
             <div className="text-center space-y-4">

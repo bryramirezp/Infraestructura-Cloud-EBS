@@ -9,6 +9,8 @@ from app.database.session import get_db
 from app.schemas.curso import CursoCreate, CursoDetailResponse, CursoResponse, CursoUpdate
 from app.schemas.guia_estudio import GuiaEstudioResponse
 from app.services.curso_service import CursoService
+from app.services.examen_final_service import ExamenFinalService
+from app.schemas.examen_final import ExamenFinalDetailResponse
 from app.services.s3_service import S3Service
 from app.utils.roles import UserRole, require_role
 
@@ -87,6 +89,38 @@ async def get_guias_estudio(
 		guias_response.append(GuiaEstudioResponse(**guia_data))
 	
 	return guias_response
+
+
+@router.get("/{curso_id}/examen-final", response_model=ExamenFinalDetailResponse, status_code=status.HTTP_200_OK)
+async def get_examen_final_curso(
+	curso_id: UUID,
+	db: AsyncSession = Depends(get_db),
+):
+	"""Obtener examen final de un curso."""
+	examen_service = ExamenFinalService(db)
+	examen = await examen_service.get_examen_final_by_curso(curso_id)
+	if not examen:
+		from app.utils.exceptions import NotFoundError
+		raise NotFoundError("Examen final", f"para curso {curso_id}")
+	
+	from sqlalchemy import select
+	from app.database import models
+	
+	stmt = select(models.Pregunta).where(models.Pregunta.examen_final_id == examen.id)
+	result = await db.execute(stmt)
+	preguntas = result.scalars().all()
+	
+	return ExamenFinalDetailResponse(
+		id=examen.id,
+		curso_id=examen.curso_id,
+		titulo=examen.titulo,
+		publicado=examen.publicado,
+		aleatorio=examen.aleatorio,
+		guarda_calificacion=examen.guarda_calificacion,
+		creado_en=examen.creado_en,
+		actualizado_en=examen.actualizado_en,
+		numero_preguntas=len(preguntas),
+	)
 
 
 @router.post("", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)

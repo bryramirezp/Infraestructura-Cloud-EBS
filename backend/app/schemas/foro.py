@@ -11,10 +11,20 @@ class ForoComentarioBase(BaseModel):
     contenido: str
 
 
+class ForoComentarioCreate(BaseModel):
+    curso_id: uuid.UUID
+    leccion_id: uuid.UUID
+    contenido: str
+
+
+class ForoComentarioUpdate(BaseModel):
+    contenido: str
+
+
 class ForoComentarioResponse(ForoComentarioBase):
     id: uuid.UUID
     creado_en: Optional[datetime]
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

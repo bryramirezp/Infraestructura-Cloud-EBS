@@ -19,7 +19,7 @@ class QuizResponse(QuizBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ExamenFinalBase(BaseModel):
@@ -36,7 +36,7 @@ class ExamenFinalResponse(ExamenFinalBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PreguntaBase(BaseModel):
@@ -53,7 +53,7 @@ class PreguntaResponse(PreguntaBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PreguntaConfigBase(BaseModel):
@@ -81,4 +81,4 @@ class OpcionResponse(OpcionBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

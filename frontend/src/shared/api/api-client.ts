@@ -1,6 +1,10 @@
 import { API_ENDPOINTS } from './endpoints';
 
 const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api';
+// Remove /api suffix for auth endpoints (they're under /auth, not /api/auth)
+const BASE_URL = API_URL.endsWith('/api') 
+  ? API_URL.slice(0, -4) // Remove '/api'
+  : API_URL.replace(/\/api$/, ''); // Fallback: remove trailing /api
 
 /**
  * API Client Service
@@ -18,9 +22,11 @@ class APIClient {
    */
   private async request(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    useBaseUrl: boolean = false
   ): Promise<Response> {
-    const url = `${API_URL}${endpoint}`;
+    const baseUrl = useBaseUrl ? BASE_URL : API_URL;
+    const url = `${baseUrl}${endpoint}`;
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -31,34 +37,64 @@ class APIClient {
     // Importante: No enviar Authorization header
     // El backend maneja autenticación via cookies HTTP seguras
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include', // Incluir cookies en todas las peticiones
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // Incluir cookies en todas las peticiones
+      });
 
-    if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
-      } catch {
-        // Si la respuesta no es JSON, usar el texto
-        const errorText = await response.text();
-        if (errorText) {
-          errorMessage = errorText;
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
+        } catch {
+          // Si la respuesta no es JSON, usar el texto
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
         }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    return response;
+      return response;
+    } catch (error: any) {
+      // Mejorar mensaje de error para "Failed to fetch"
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        const isAuthEndpoint = endpoint.includes('/auth/');
+        const isHealthEndpoint = endpoint.includes('/health');
+        
+        // Para health check, solo loggear en modo desarrollo y no como error crítico
+        if (isHealthEndpoint) {
+          // No loggear como error, solo como información en desarrollo
+          // En Vite, import.meta.env.MODE === 'development' para desarrollo
+          const isDev = (import.meta as any).env?.MODE === 'development' || (import.meta as any).env?.DEV;
+          if (isDev) {
+            console.info(`[API Client] Backend no disponible en ${baseUrl}${endpoint}`);
+          }
+          throw new Error('Backend unavailable');
+        }
+        
+        // Para endpoints de auth, lanzar error silencioso (será manejado por checkAuth)
+        if (isAuthEndpoint) {
+          throw new Error('Connection failed');
+        }
+        
+        // Para otros endpoints, mostrar error completo
+        const errorMsg = `No se pudo conectar con el servidor. Verifica que el backend esté corriendo en ${baseUrl}`;
+        console.error(`[API Client] Error de conexión a ${url}:`, error);
+        throw new Error(errorMsg);
+      }
+      throw error;
+    }
   }
 
   /**
    * Realiza una petición GET
    */
-  async get(endpoint: string, queryParams?: Record<string, any>) {
+  async get(endpoint: string, queryParams?: Record<string, any>, useBaseUrl: boolean = false) {
     let fullEndpoint = endpoint;
     if (queryParams) {
       const params = new URLSearchParams();
@@ -73,9 +109,13 @@ class APIClient {
       }
     }
 
-    const response = await this.request(fullEndpoint, {
-      method: 'GET',
-    });
+    const response = await this.request(
+      fullEndpoint,
+      {
+        method: 'GET',
+      },
+      useBaseUrl
+    );
 
     return response.json();
   }
@@ -83,11 +123,15 @@ class APIClient {
   /**
    * Realiza una petición POST
    */
-  async post(endpoint: string, data?: any) {
-    const response = await this.request(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  async post(endpoint: string, data?: any, useBaseUrl: boolean = false) {
+    const response = await this.request(
+      endpoint,
+      {
+        method: 'POST',
+        body: data ? JSON.stringify(data) : undefined,
+      },
+      useBaseUrl
+    );
 
     return response.json();
   }
@@ -124,15 +168,24 @@ class APIClient {
 
   // Authentication (Cognito Hosted UI)
   async getAuthProfile() {
-    return this.get(API_ENDPOINTS.AUTH.PROFILE);
+    return this.get(API_ENDPOINTS.AUTH.PROFILE, undefined, true);
   }
 
   async getAuthTokens() {
-    return this.get(API_ENDPOINTS.AUTH.TOKENS);
+    return this.get(API_ENDPOINTS.AUTH.TOKENS, undefined, true);
   }
 
   async refreshAuthTokens() {
-    return this.post(API_ENDPOINTS.AUTH.REFRESH);
+    return this.post(API_ENDPOINTS.AUTH.REFRESH, undefined, true);
+  }
+
+  async setAuthTokens(accessToken: string, refreshToken: string, idToken: string) {
+    // Auth endpoints are under /auth, not /api/auth
+    return this.post(API_ENDPOINTS.AUTH.SET_TOKENS, {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      id_token: idToken,
+    }, true);
   }
 
   // Módulos API
@@ -393,7 +446,8 @@ class APIClient {
 
   // Sistema API
   async healthCheck() {
-    return this.get(API_ENDPOINTS.SISTEMA.HEALTH);
+    // Health check está en /health, no en /api/health
+    return this.get(API_ENDPOINTS.SISTEMA.HEALTH, undefined, true);
   }
 
   async getVersion() {
