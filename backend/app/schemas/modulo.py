@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 import uuid
 from datetime import date, datetime
@@ -9,10 +9,10 @@ from app.schemas.curso import CursoResponse
 
 
 class ModuloBase(BaseModel):
-    titulo: str
-    fecha_inicio: date
-    fecha_fin: date
-    publicado: Optional[bool] = False
+    titulo: str = Field(..., min_length=1, max_length=200, description="Título del módulo")
+    fecha_inicio: date = Field(..., description="Fecha de inicio del módulo")
+    fecha_fin: date = Field(..., description="Fecha de fin del módulo")
+    publicado: Optional[bool] = Field(False, description="Indica si el módulo está publicado")
 
 
 class ModuloCreate(ModuloBase):
@@ -20,10 +20,10 @@ class ModuloCreate(ModuloBase):
 
 
 class ModuloUpdate(BaseModel):
-    titulo: Optional[str] = None
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
-    publicado: Optional[bool] = None
+    titulo: Optional[str] = Field(None, min_length=1, max_length=200, description="Título del módulo")
+    fecha_inicio: Optional[date] = Field(None, description="Fecha de inicio del módulo")
+    fecha_fin: Optional[date] = Field(None, description="Fecha de fin del módulo")
+    publicado: Optional[bool] = Field(None, description="Indica si el módulo está publicado")
 
 
 class ModuloResponse(ModuloBase):

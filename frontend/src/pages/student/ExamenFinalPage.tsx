@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useExamenFinal, useExamenFinalPreguntas, useIniciarExamenFinal, useEnviarExamenFinal } from '@/entities/exam/api/use-exam';
+import { useExamenFinal, useExamenFinalPreguntas, useCrearIntentoExamenFinal, useEnviarIntentoExamenFinal } from '@/entities/exam/api/use-exam';
 import { useCursoProgreso } from '@/entities/course/api/use-course';
 import { QuizQuestionCard } from '@/widgets/quiz';
 import { QuizTimer } from '@/widgets/quiz';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, Loader2, Send, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PreguntaCompleta } from '@/widgets/quiz';
@@ -19,8 +19,8 @@ export const ExamenFinalPage: React.FC = () => {
   const { data: examen, isLoading: isLoadingExamen, error: errorExamen } = useExamenFinal(id);
   const { data: preguntas, isLoading: isLoadingPreguntas } = useExamenFinalPreguntas(id);
   const { data: progreso } = useCursoProgreso(examen?.curso_id);
-  const iniciarMutation = useIniciarExamenFinal();
-  const enviarMutation = useEnviarExamenFinal();
+  const crearIntentoMutation = useCrearIntentoExamenFinal();
+  const enviarIntentoMutation = useEnviarIntentoExamenFinal();
 
   const [intentoId, setIntentoId] = useState<string | null>(null);
   const [respuestas, setRespuestas] = useState<Record<string, {
@@ -43,9 +43,9 @@ export const ExamenFinalPage: React.FC = () => {
       if (!id || intentoId || prerrequisitosCumplidos === false) return;
       
       try {
-        const resultado = await iniciarMutation.mutateAsync(id);
-        if (resultado?.intento_id) {
-          setIntentoId(resultado.intento_id);
+        const resultado = await crearIntentoMutation.mutateAsync(id);
+        if (resultado?.id) {
+          setIntentoId(resultado.id);
         }
       } catch (error: any) {
         toast.error(error?.message || 'Error al iniciar el examen final');
@@ -55,7 +55,7 @@ export const ExamenFinalPage: React.FC = () => {
     if (prerrequisitosCumplidos === true && id) {
       iniciarIntento();
     }
-  }, [id, intentoId, prerrequisitosCumplidos, iniciarMutation]);
+  }, [id, intentoId, prerrequisitosCumplidos, crearIntentoMutation]);
 
   const preguntasOrdenadas = React.useMemo(() => {
     if (!preguntas) return [];
@@ -100,8 +100,14 @@ export const ExamenFinalPage: React.FC = () => {
         } as Respuesta;
       });
 
-      await enviarMutation.mutateAsync({
+      if (!intentoId) {
+        toast.error('Error: No se pudo obtener el ID del intento');
+        return;
+      }
+
+      await enviarIntentoMutation.mutateAsync({
         examenId: id,
+        intentoId: intentoId,
         respuestas: respuestasArray
       });
 

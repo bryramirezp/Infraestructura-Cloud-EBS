@@ -1,23 +1,19 @@
 import logging
 from typing import List, Optional
 from uuid import UUID
-from decimal import Decimal
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.database.session import get_db
-from app.database import models
-from app.database.enums import ResultadoIntento
 from app.schemas.quiz import QuizConPreguntas, QuizDetailResponse, PreguntaConOpciones, OpcionResponse, PreguntaConfigResponse
-from app.schemas.intento import IntentoResponse, IntentoSubmission, IntentoResult, RespuestaResponse
+from app.schemas.intento import IntentoResponse, IntentoSubmission, IntentoResult
 from app.services.quiz_service import QuizService
 from app.services.usuario_service import UsuarioService
 from app.services.leccion_service import LeccionService
 from app.utils.jwt_auth import get_current_user
 from app.utils.roles import is_admin
-from app.utils.exceptions import AuthorizationError, ValidationError
+from app.utils.exceptions import AuthorizationError
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +30,13 @@ async def get_quiz(
 	db: AsyncSession = Depends(get_db),
 	token_payload: Optional[dict] = Depends(get_current_user),
 ):
-	"""Obtener quiz con todas sus preguntas y opciones."""
+	"""
+	Obtener quiz con todas sus preguntas y opciones.
+	
+	- **Permisos**: Requiere autenticación (opcional, pero necesario para validar acceso a la lección)
+	- **Parámetros**: `quiz_id` - ID del quiz
+	- **Respuesta**: Quiz completo con todas sus preguntas, opciones y configuraciones
+	"""
 	service = QuizService(db)
 	
 	usuario_id = None
@@ -92,16 +94,22 @@ async def get_quiz(
 
 
 @router.post(
-	"/{quiz_id}/iniciar",
+	"/{quiz_id}/intentos",
 	response_model=IntentoResponse,
 	status_code=status.HTTP_201_CREATED,
 )
-async def iniciar_intento_quiz(
+async def create_intento_quiz(
 	quiz_id: UUID,
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
 ):
-	"""Iniciar un nuevo intento de quiz."""
+	"""
+	Crear un nuevo intento de quiz.
+	
+	- **Permisos**: Requiere autenticación. El usuario debe estar inscrito en el curso asociado
+	- **Parámetros**: `quiz_id` - ID del quiz
+	- **Respuesta**: Intento creado y listo para responder
+	"""
 	service = QuizService(db)
 	usuario_service = UsuarioService(db)
 	
@@ -109,54 +117,36 @@ async def iniciar_intento_quiz(
 	if not usuario:
 		raise AuthorizationError("Usuario no encontrado")
 	
-	quiz = await service.get_quiz(quiz_id)
-	leccion_service = LeccionService(db)
-	leccion = await leccion_service.get_leccion(quiz.leccion_id)
-	
-	modulo_curso = await db.execute(
-		select(models.ModuloCurso)
-		.where(models.ModuloCurso.modulo_id == leccion.modulo_id)
-		.limit(1)
-	)
-	modulo_curso_obj = modulo_curso.scalar_one_or_none()
-	
-	if not modulo_curso_obj:
-		raise ValidationError("No se encontró curso asociado")
-	
-	inscripcion = await db.execute(
-		select(models.InscripcionCurso).where(
-			and_(
-				models.InscripcionCurso.usuario_id == usuario.id,
-				models.InscripcionCurso.curso_id == modulo_curso_obj.curso_id,
-			)
-		)
-	)
-	inscripcion_obj = inscripcion.scalar_one_or_none()
-	
-	if not inscripcion_obj:
-		raise AuthorizationError("No estás inscrito en este curso")
-	
-	intento = await service.iniciar_intento(
+	intento = await service.iniciar_intento_con_validacion(
 		usuario_id=usuario.id,
 		quiz_id=quiz_id,
-		inscripcion_curso_id=inscripcion_obj.id,
 	)
 	
 	return IntentoResponse.from_orm(intento)
 
 
-@router.post(
-	"/{quiz_id}/enviar",
+@router.put(
+	"/{quiz_id}/intentos/{intento_id}",
 	response_model=IntentoResult,
 	status_code=status.HTTP_200_OK,
 )
-async def enviar_respuestas_quiz(
+async def update_intento_quiz(
 	quiz_id: UUID,
+	intento_id: UUID,
 	payload: IntentoSubmission,
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
 ):
-	"""Enviar respuestas de un quiz y obtener resultado."""
+	"""
+	Enviar respuestas de un intento de quiz y obtener resultado.
+	
+	- **Permisos**: Requiere autenticación. El usuario debe ser propietario del intento
+	- **Parámetros**: 
+	  - `quiz_id` - ID del quiz
+	  - `intento_id` - ID del intento
+	  - `respuestas` - Lista de respuestas del intento
+	- **Respuesta**: Resultado del intento con puntuación, estado de aprobación y respuestas evaluadas
+	"""
 	service = QuizService(db)
 	usuario_service = UsuarioService(db)
 	
@@ -164,82 +154,23 @@ async def enviar_respuestas_quiz(
 	if not usuario:
 		raise AuthorizationError("Usuario no encontrado")
 	
-	quiz = await service.get_quiz(quiz_id)
-	leccion_service = LeccionService(db)
-	leccion = await leccion_service.get_leccion(quiz.leccion_id)
+	from app.services.intento_service import IntentoService
+	intento_service = IntentoService(db)
+	intento = await intento_service.get_intento(intento_id)
 	
-	modulo_curso = await db.execute(
-		select(models.ModuloCurso)
-		.where(models.ModuloCurso.modulo_id == leccion.modulo_id)
-		.limit(1)
-	)
-	modulo_curso_obj = modulo_curso.scalar_one_or_none()
+	if intento.usuario_id != usuario.id:
+		raise AuthorizationError("No tienes permiso para modificar este intento")
 	
-	if not modulo_curso_obj:
-		raise ValidationError("No se encontró curso asociado")
+	if intento.quiz_id != quiz_id:
+		raise AuthorizationError("El intento no pertenece a este quiz")
 	
-	inscripcion = await db.execute(
-		select(models.InscripcionCurso).where(
-			and_(
-				models.InscripcionCurso.usuario_id == usuario.id,
-				models.InscripcionCurso.curso_id == modulo_curso_obj.curso_id,
-			)
-		)
-	)
-	inscripcion_obj = inscripcion.scalar_one_or_none()
-	
-	if not inscripcion_obj:
-		raise AuthorizationError("No estás inscrito en este curso")
-	
-	intento_activo = await db.execute(
-		select(models.Intento).where(
-			and_(
-				models.Intento.usuario_id == usuario.id,
-				models.Intento.quiz_id == quiz_id,
-				models.Intento.inscripcion_curso_id == inscripcion_obj.id,
-				models.Intento.finalizado_en.is_(None),
-			)
-		)
-	)
-	intento_obj = intento_activo.scalar_one_or_none()
-	
-	if not intento_obj:
-		raise ValidationError("No hay un intento activo para este quiz")
-	
-	intento = await service.enviar_respuestas(
-		intento_id=intento_obj.id,
+	intento_finalizado = await service.enviar_respuestas(
+		intento_id=intento_id,
 		respuestas=[r.dict() for r in payload.respuestas],
 	)
 	
-	puntaje_total, puntaje_maximo, preguntas_correctas, total_preguntas = await service.calcular_puntaje(intento.id)
-	
-	regla = await service.get_regla_acreditacion(
-		modulo_curso_obj.curso_id,
-		quiz_id=quiz_id,
-	)
-	
-	min_score = regla.min_score_aprobatorio if regla else Decimal("80.00")
-	porcentaje = (puntaje_total / puntaje_maximo * 100) if puntaje_maximo > 0 else Decimal("0")
-	
-	respuestas_stmt = await db.execute(
-		select(models.Respuesta)
-		.join(models.IntentoPregunta)
-		.where(models.IntentoPregunta.intento_id == intento.id)
-	)
-	respuestas = respuestas_stmt.scalars().all()
-	
-	return IntentoResult(
-		intento_id=intento.id,
-		puntaje=porcentaje,
-		puntaje_maximo=puntaje_maximo,
-		porcentaje=porcentaje,
-		resultado=intento.resultado,
-		aprobado=intento.resultado == ResultadoIntento.APROBADO,
-		min_score_aprobatorio=min_score,
-		preguntas_correctas=preguntas_correctas,
-		total_preguntas=total_preguntas,
-		respuestas=[RespuestaResponse.from_orm(r) for r in respuestas],
-	)
+	resultado = await service.construir_intento_result(intento_finalizado)
+	return resultado
 
 
 @router.get(
@@ -251,8 +182,16 @@ async def list_intentos_quiz(
 	quiz_id: UUID,
 	db: AsyncSession = Depends(get_db),
 	token_payload: Optional[dict] = Depends(get_current_user),
+	skip: int = Query(0, ge=0, description="Número de registros a omitir"),
+	limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
 ):
-	"""Obtener historial de intentos de un quiz."""
+	"""
+	Obtener historial de intentos de un quiz para el usuario autenticado.
+
+	- **Permisos**: Requiere autenticación.
+	- **Paginación**: Usa `skip` y `limit` para paginación.
+	- **Respuesta**: Lista paginada de intentos de quiz.
+	"""
 	service = QuizService(db)
 	
 	usuario_id = None
@@ -262,6 +201,6 @@ async def list_intentos_quiz(
 		if usuario:
 			usuario_id = usuario.id
 	
-	intentos = await service.list_intentos(quiz_id, usuario_id=usuario_id)
+	intentos = await service.list_intentos(quiz_id, usuario_id=usuario_id, skip=skip, limit=limit)
 	return [IntentoResponse.from_orm(intento) for intento in intentos]
 

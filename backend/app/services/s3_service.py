@@ -4,9 +4,13 @@ from typing import Optional
 import logging
 
 from app.config import settings
-from app.utils.exceptions import EBSException
+from app.utils.exceptions import EBSException, ValidationError
+from app.utils.error_codes import ValidationErrorCodes
 
 logger = logging.getLogger(__name__)
+
+# Tamaño máximo de archivo: 10 MB (para certificados PDF y guías de estudio)
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB en bytes
 
 
 class S3Service:
@@ -88,7 +92,8 @@ class S3Service:
         file_content: bytes,
         s3_key: str,
         content_type: str = "application/octet-stream",
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        max_size: Optional[int] = None
     ) -> str:
         """
         Subir archivo a S3
@@ -98,13 +103,26 @@ class S3Service:
             s3_key: Clave del objeto en S3
             content_type: Tipo MIME del contenido
             metadata: Metadatos adicionales opcionales
+            max_size: Tamaño máximo permitido en bytes (default: MAX_FILE_SIZE)
             
         Returns:
             Clave S3 del archivo subido
             
         Raises:
+            ValidationError: Si el archivo excede el tamaño máximo
             EBSException: Si ocurre error al subir archivo
         """
+        max_size = max_size or MAX_FILE_SIZE
+        
+        file_size = len(file_content)
+        if file_size > max_size:
+            size_mb = file_size / (1024 * 1024)
+            max_mb = max_size / (1024 * 1024)
+            raise ValidationError(
+                f"El archivo excede el tamaño máximo permitido ({max_mb:.1f} MB). Tamaño del archivo: {size_mb:.1f} MB",
+                error_code=ValidationErrorCodes.FILE_TOO_LARGE
+            )
+        
         try:
             extra_args = {"ContentType": content_type}
             

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
-from typing import Optional, List, TYPE_CHECKING
+from pydantic import BaseModel, Field
+from typing import Optional, List
 import uuid
 from datetime import datetime
 
-if TYPE_CHECKING:
-    from app.schemas.quiz import PreguntaConOpciones
+from app.schemas.quiz import PreguntaConOpciones
 
 
 # =====================================================
@@ -14,11 +13,11 @@ if TYPE_CHECKING:
 # =====================================================
 
 class ExamenFinalBase(BaseModel):
-    curso_id: uuid.UUID
-    titulo: str
-    publicado: Optional[bool] = False
-    aleatorio: Optional[bool] = False
-    guarda_calificacion: Optional[bool] = False
+    curso_id: uuid.UUID = Field(..., description="ID del curso asociado")
+    titulo: str = Field(..., min_length=1, max_length=200, description="Título del examen final")
+    publicado: Optional[bool] = Field(False, description="Indica si el examen está publicado")
+    aleatorio: Optional[bool] = Field(False, description="Indica si las preguntas se muestran en orden aleatorio")
+    guarda_calificacion: Optional[bool] = Field(False, description="Indica si se guarda la calificación del intento")
 
 
 class ExamenFinalCreate(ExamenFinalBase):
@@ -26,10 +25,10 @@ class ExamenFinalCreate(ExamenFinalBase):
 
 
 class ExamenFinalUpdate(BaseModel):
-    titulo: Optional[str] = None
-    publicado: Optional[bool] = None
-    aleatorio: Optional[bool] = None
-    guarda_calificacion: Optional[bool] = None
+    titulo: Optional[str] = Field(None, min_length=1, max_length=200, description="Título del examen final")
+    publicado: Optional[bool] = Field(None, description="Indica si el examen está publicado")
+    aleatorio: Optional[bool] = Field(None, description="Indica si las preguntas se muestran en orden aleatorio")
+    guarda_calificacion: Optional[bool] = Field(None, description="Indica si se guarda la calificación del intento")
 
 
 class ExamenFinalResponse(ExamenFinalBase):

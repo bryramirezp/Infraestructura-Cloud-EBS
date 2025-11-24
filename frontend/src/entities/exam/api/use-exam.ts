@@ -46,15 +46,15 @@ export const useExamenFinalResultados = (examenId: string | null | undefined) =>
 };
 
 /**
- * Hook para iniciar un intento de examen final
+ * Hook para crear un intento de examen final
  * Valida prerrequisitos (todos los quizzes aprobados) antes de crear intento
  */
-export const useIniciarExamenFinal = () => {
+export const useCrearIntentoExamenFinal = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (examenId: string) =>
-      apiClient.iniciarExamenFinal(examenId),
+      apiClient.crearIntentoExamenFinal(examenId),
     onSuccess: (_, examenId) => {
       // Invalidar intentos del examen para refrescar
       queryClient.invalidateQueries({ queryKey: ['intentos', { examen_final_id: examenId }] });
@@ -64,14 +64,14 @@ export const useIniciarExamenFinal = () => {
 };
 
 /**
- * Hook para enviar las respuestas de un examen final
+ * Hook para enviar las respuestas de un intento de examen final
  */
-export const useEnviarExamenFinal = () => {
+export const useEnviarIntentoExamenFinal = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ examenId, respuestas }: { examenId: string; respuestas: Respuesta[] }) =>
-      apiClient.enviarExamenFinal(examenId, respuestas),
+    mutationFn: ({ examenId, intentoId, respuestas }: { examenId: string; intentoId: string; respuestas: Respuesta[] }) =>
+      apiClient.enviarIntentoExamenFinal(examenId, intentoId, respuestas),
     onSuccess: (_, variables) => {
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['examen-final', variables.examenId] });

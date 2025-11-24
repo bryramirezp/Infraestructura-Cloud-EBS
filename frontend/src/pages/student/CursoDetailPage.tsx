@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, BookOpen, FileText, PlayCircle, Link as LinkIcon, CheckCircle2, Clock, Award } from 'lucide-react';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { cn } from '@/shared/lib/utils';

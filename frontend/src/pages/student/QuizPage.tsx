@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuiz, useQuizPreguntas, useQuizIntentos, useIniciarQuiz, useEnviarQuiz } from '@/entities/quiz/api/use-quiz';
+import { useQuiz, useQuizPreguntas, useQuizIntentos, useCrearIntentoQuiz, useEnviarIntentoQuiz } from '@/entities/quiz/api/use-quiz';
 import { QuizQuestionCard } from '@/widgets/quiz';
 import { Button } from '@/shared/ui/button';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import type { PreguntaCompleta } from '@/widgets/quiz';
@@ -17,8 +17,8 @@ export const QuizPage: React.FC = () => {
   const { data: quiz, isLoading: isLoadingQuiz, error: errorQuiz } = useQuiz(id);
   const { data: preguntas, isLoading: isLoadingPreguntas } = useQuizPreguntas(id);
   const { data: intentos } = useQuizIntentos(id);
-  const iniciarMutation = useIniciarQuiz();
-  const enviarMutation = useEnviarQuiz();
+  const crearIntentoMutation = useCrearIntentoQuiz();
+  const enviarIntentoMutation = useEnviarIntentoQuiz();
 
   const [intentoId, setIntentoId] = useState<string | null>(null);
   const [respuestas, setRespuestas] = useState<Record<string, {
@@ -33,9 +33,9 @@ export const QuizPage: React.FC = () => {
       if (!id || intentoId) return;
       
       try {
-        const resultado = await iniciarMutation.mutateAsync(id);
-        if (resultado?.intento_id) {
-          setIntentoId(resultado.intento_id);
+        const resultado = await crearIntentoMutation.mutateAsync(id);
+        if (resultado?.id) {
+          setIntentoId(resultado.id);
         }
       } catch (error: any) {
         toast.error(error?.message || 'Error al iniciar el quiz');
@@ -43,7 +43,7 @@ export const QuizPage: React.FC = () => {
     };
 
     iniciarIntento();
-  }, [id, intentoId, iniciarMutation]);
+  }, [id, intentoId, crearIntentoMutation]);
 
   const preguntasOrdenadas = React.useMemo(() => {
     if (!preguntas) return [];
@@ -88,8 +88,14 @@ export const QuizPage: React.FC = () => {
         } as Respuesta;
       });
 
-      await enviarMutation.mutateAsync({
+      if (!intentoId) {
+        toast.error('Error: No se pudo obtener el ID del intento');
+        return;
+      }
+
+      await enviarIntentoMutation.mutateAsync({
         quizId: id,
+        intentoId: intentoId,
         respuestas: respuestasArray
       });
 

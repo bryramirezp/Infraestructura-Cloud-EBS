@@ -40,6 +40,8 @@ class ForoService:
 		self,
 		curso_id: uuid.UUID,
 		leccion_id: uuid.UUID,
+		skip: int = 0,
+		limit: int = 100,
 	) -> List[models.ForoComentario]:
 		"""Listar comentarios de una lección."""
 		stmt = (
@@ -54,6 +56,8 @@ class ForoService:
 				)
 			)
 			.order_by(models.ForoComentario.creado_en.asc())
+			.offset(skip)
+			.limit(limit)
 		)
 		result = await self.db.execute(stmt)
 		return result.scalars().all()

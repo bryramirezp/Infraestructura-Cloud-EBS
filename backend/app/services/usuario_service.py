@@ -51,12 +51,17 @@ class UsuarioService:
 		if not cognito_user_id:
 			raise ValidationError("Missing cognito user id in token")
 
+		try:
+			usuario_id = uuid.UUID(cognito_user_id)
+		except ValueError:
+			raise ValidationError(f"Invalid UUID format: {cognito_user_id}")
+
 		stmt = (
 			select(models.Usuario)
 			.options(
 				selectinload(models.Usuario.roles).selectinload(models.UsuarioRol.rol),
 			)
-			.where(models.Usuario.cognito_user_id == cognito_user_id)
+			.where(models.Usuario.id == usuario_id)
 		)
 		result = await self.db.execute(stmt)
 		usuario = result.scalar_one_or_none()

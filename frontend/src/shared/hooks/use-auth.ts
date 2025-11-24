@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../api/api-client';
 import { API_ENDPOINTS } from '../api/endpoints';
-import { cognitoService } from '../services/cognito-service';
-import { extractUserInfoFromIdToken, APP_ROLES, type AppRole } from '../lib/cognito-roles';
+import { cognitoService } from '../auth/cognito-service';
+import { extractUserInfoFromIdToken, APP_ROLES, type AppRole } from '../auth/cognito-roles';
 
 interface User {
   user_id: string;
@@ -94,7 +94,7 @@ export const useAuth = (): UseAuthReturn => {
         return;
       }
       
-      // Llamar al endpoint /auth/profile del backend
+      // Llamar al endpoint /api/usuarios/me del backend
       // Este endpoint lee las cookies y devuelve el perfil del usuario
       const userProfile = await apiClient.getAuthProfile();
       
@@ -140,18 +140,25 @@ export const useAuth = (): UseAuthReturn => {
     } catch (error: any) {
       // Distinguir entre errores esperados (usuario no autenticado) y errores reales
       const errorMessage = error?.message || '';
+      const statusCode = errorMessage.match(/\b(401|403|404)\b/)?.[1];
       const isExpectedError = 
+        statusCode === '401' || // No autenticado - esperado
+        statusCode === '403' || // No autorizado - esperado
         errorMessage.includes('401') ||
         errorMessage.includes('403') ||
         errorMessage.includes('Unauthorized') ||
         errorMessage.includes('Forbidden') ||
         errorMessage.includes('No access token') ||
         errorMessage.includes('Connection failed') ||
-        errorMessage === 'Failed to fetch'; // Failed to fetch es esperado cuando no hay backend o no hay sesión
+        errorMessage === 'Failed to fetch' || // Failed to fetch es esperado cuando no hay backend o no hay sesión
+        errorMessage.includes('Backend unavailable'); // Backend no disponible
       
-      // Solo loggear errores inesperados
+      // Solo loggear errores inesperados (no 401/403 que son esperados cuando no hay sesión)
       if (!isExpectedError) {
         console.error('[Auth] Error inesperado al verificar autenticación:', error);
+      } else if (statusCode === '401') {
+        // 401 es completamente esperado cuando el usuario no está autenticado
+        // No loggear nada, solo establecer estado como no autenticado
       }
       
       // No hay sesión válida o el token expiró - esto es esperado cuando el usuario no está autenticado
@@ -166,6 +173,12 @@ export const useAuth = (): UseAuthReturn => {
 
   /**
    * Iniciar sesión con email y contraseña usando Cognito directamente
+   * 
+   * NOTA: Este método ya no se usa con Cognito Hosted UI (PKCE flow).
+   * Se mantiene por compatibilidad, pero el flujo recomendado es usar
+   * Cognito Hosted UI a través de /api/auth/login
+   * 
+   * @deprecated Use Cognito Hosted UI instead (redirect to /api/auth/login)
    */
   const login = async (
     email: string,
@@ -178,25 +191,12 @@ export const useAuth = (): UseAuthReturn => {
       // Autenticar con Cognito
       const authResult = await cognitoService.authenticateUser(email, password);
 
-      // Si se requiere nueva contraseña, almacenar datos y redirigir
+      // Si se requiere nueva contraseña, Cognito Hosted UI lo maneja automáticamente
+      // Este flujo solo aplica si se usa login directo (no recomendado)
       if (authResult.challengeName === 'NEW_PASSWORD_REQUIRED') {
-        // Almacenar datos necesarios en sessionStorage
-        try {
-          sessionStorage.setItem(
-            'newPasswordRequired',
-            JSON.stringify({
-              email,
-              temporaryPassword: password,
-              session: authResult.session,
-            })
-          );
-        } catch (storageError) {
-          console.error('Error al almacenar datos en sessionStorage:', storageError);
-          throw new Error('Error al guardar datos de sesión. Por favor intenta nuevamente.');
-        }
-        // Redirigir a la página de nueva contraseña
-        window.location.href = '/set-new-password';
-        return;
+        throw new Error(
+          'Se requiere cambio de contraseña. Por favor usa Cognito Hosted UI para completar este proceso.'
+        );
       }
 
       // Si no hay tokens, lanzar error

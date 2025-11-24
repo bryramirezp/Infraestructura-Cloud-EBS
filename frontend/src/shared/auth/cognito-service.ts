@@ -10,7 +10,7 @@ import {
  * Configuración de Cognito desde variables de entorno
  */
 const getClientId = (): string => {
-  const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID;
+  const clientId = (import.meta as any).env.VITE_COGNITO_CLIENT_ID;
   if (!clientId) {
     throw new Error('Cognito configuration missing. Please set VITE_COGNITO_CLIENT_ID');
   }
@@ -18,7 +18,7 @@ const getClientId = (): string => {
 };
 
 const getRegion = (): string => {
-  return import.meta.env.VITE_AWS_REGION || import.meta.env.VITE_COGNITO_REGION || 'us-east-1';
+  return (import.meta as any).env.VITE_AWS_REGION || (import.meta as any).env.VITE_COGNITO_REGION || 'us-east-1';
 };
 
 /**
@@ -309,3 +309,4 @@ class CognitoService {
 export const cognitoService = new CognitoService();
 
 export default cognitoService;
+

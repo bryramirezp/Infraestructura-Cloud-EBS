@@ -1,6 +1,12 @@
 import { API_ENDPOINTS } from './endpoints';
 
-const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api';
+// Get API URL from environment, default to port 8000 (FastAPI default)
+const API_URL = (import.meta as any).env.VITE_API_URL || '';
+
+// Log API URL in development for debugging
+if ((import.meta as any).env.DEV) {
+  console.log('[API Client] Using API URL:', API_URL);
+}
 // Remove /api suffix for auth endpoints (they're under /auth, not /api/auth)
 const BASE_URL = API_URL.endsWith('/api') 
   ? API_URL.slice(0, -4) // Remove '/api'
@@ -27,6 +33,11 @@ class APIClient {
   ): Promise<Response> {
     const baseUrl = useBaseUrl ? BASE_URL : API_URL;
     const url = `${baseUrl}${endpoint}`;
+
+    // Log URL in development for debugging
+    if ((import.meta as any).env.DEV) {
+      console.log(`[API Client] ${options.method || 'GET'} ${url}`);
+    }
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -56,6 +67,13 @@ class APIClient {
             errorMessage = errorText;
           }
         }
+        
+        // Para 401/403 en endpoints de autenticación, incluir el status en el mensaje
+        // para que use-auth.ts pueda detectarlo como error esperado
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = `${response.status} ${errorMessage}`;
+        }
+        
         throw new Error(errorMessage);
       }
 
@@ -168,7 +186,18 @@ class APIClient {
 
   // Authentication (Cognito Hosted UI)
   async getAuthProfile() {
-    return this.get(API_ENDPOINTS.AUTH.PROFILE, undefined, true);
+    // Usar /api/usuarios/me en lugar de /auth/profile (eliminado)
+    // Este endpoint puede retornar 401 si no hay cookies de autenticación (esperado)
+    try {
+      return await this.get(API_ENDPOINTS.USUARIOS.ME);
+    } catch (error: any) {
+      // Si es 401, es esperado cuando el usuario no está autenticado
+      // Re-lanzar el error para que use-auth.ts lo maneje
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        throw error; // Re-lanzar para que use-auth.ts lo maneje como error esperado
+      }
+      throw error;
+    }
   }
 
   async getAuthTokens() {
@@ -260,12 +289,12 @@ class APIClient {
     return this.get(API_ENDPOINTS.QUIZZES.PREGUNTAS(quizId));
   }
 
-  async iniciarQuiz(quizId: string) {
-    return this.post(API_ENDPOINTS.QUIZZES.INICIAR(quizId));
+  async crearIntentoQuiz(quizId: string) {
+    return this.post(API_ENDPOINTS.QUIZZES.INTENTOS(quizId));
   }
 
-  async enviarQuiz(quizId: string, respuestas: any) {
-    return this.post(API_ENDPOINTS.QUIZZES.ENVIAR(quizId), { respuestas });
+  async enviarIntentoQuiz(quizId: string, intentoId: string, respuestas: any) {
+    return this.put(API_ENDPOINTS.QUIZZES.INTENTO_BY_ID(quizId, intentoId), { respuestas });
   }
 
   async getQuizResultados(quizId: string) {
@@ -285,12 +314,12 @@ class APIClient {
     return this.get(API_ENDPOINTS.EXAMENES_FINALES.PREGUNTAS(examenId));
   }
 
-  async iniciarExamenFinal(examenId: string) {
-    return this.post(API_ENDPOINTS.EXAMENES_FINALES.INICIAR(examenId));
+  async crearIntentoExamenFinal(examenId: string) {
+    return this.post(API_ENDPOINTS.EXAMENES_FINALES.INTENTOS(examenId));
   }
 
-  async enviarExamenFinal(examenId: string, respuestas: any) {
-    return this.post(API_ENDPOINTS.EXAMENES_FINALES.ENVIAR(examenId), { respuestas });
+  async enviarIntentoExamenFinal(examenId: string, intentoId: string, respuestas: any) {
+    return this.put(API_ENDPOINTS.EXAMENES_FINALES.INTENTO_BY_ID(examenId, intentoId), { respuestas });
   }
 
   async getExamenFinalResultados(examenId: string) {
@@ -339,6 +368,18 @@ class APIClient {
     return this.put(API_ENDPOINTS.INSCRIPCIONES.ACTUALIZAR_ESTADO(inscripcionId), { estado });
   }
 
+  async patchInscripcion(inscripcionId: string, estado: string) {
+    // Usar PATCH en lugar de PUT para actualizar estado
+    const response = await this.request(
+      API_ENDPOINTS.INSCRIPCIONES.ACTUALIZAR_ESTADO(inscripcionId),
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ estado }),
+      }
+    );
+    return response.json();
+  }
+
   async getCertificadoByInscripcion(inscripcionId: string) {
     return this.get(API_ENDPOINTS.INSCRIPCIONES.CERTIFICADO(inscripcionId));
   }
@@ -352,16 +393,16 @@ class APIClient {
     return this.get(API_ENDPOINTS.CERTIFICADOS.BY_USUARIO(usuarioId));
   }
 
-  async descargarCertificado(certificadoId: string) {
-    return this.get(API_ENDPOINTS.CERTIFICADOS.DESCARGAR(certificadoId));
+  async obtenerCertificado(certificadoId: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.BY_ID(certificadoId));
   }
 
-  async verificarCertificado(hash: string) {
-    return this.get(API_ENDPOINTS.CERTIFICADOS.VERIFICAR(hash));
+  async verificarCertificado(certificadoId: string, hash: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.VERIFICAR(certificadoId, hash));
   }
 
-  async generarCertificado(inscripcionId: string) {
-    return this.post(API_ENDPOINTS.CERTIFICADOS.GENERAR(inscripcionId));
+  async crearCertificado(inscripcionId: string) {
+    return this.post(API_ENDPOINTS.CERTIFICADOS.BASE, { inscripcion_curso_id: inscripcionId });
   }
 
   // Usuarios API
@@ -374,7 +415,7 @@ class APIClient {
   }
 
   async getUsuarioPerfil() {
-    return this.get(API_ENDPOINTS.USUARIOS.PERFIL);
+    return this.get(API_ENDPOINTS.USUARIOS.ME);
   }
 
   async actualizarUsuarioPerfil(perfilData: any) {

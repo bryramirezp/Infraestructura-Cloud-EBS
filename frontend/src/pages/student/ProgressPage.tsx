@@ -3,7 +3,7 @@ import { useProgresoUsuario } from '@/entities/progress/api/use-progress';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, TrendingUp, Award, BookOpen } from 'lucide-react';
 
 export const ProgressPage: React.FC = () => {

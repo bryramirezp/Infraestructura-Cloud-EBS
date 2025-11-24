@@ -12,6 +12,8 @@ from app.database.enums import ResultadoIntento
 from app.utils.exceptions import NotFoundError, AuthorizationError, BusinessRuleError, ValidationError
 from app.services.intento_service import IntentoService
 from app.services.quiz_service import QuizService
+from app.services.inscripcion_service import InscripcionService
+from app.schemas.intento import IntentoResult, RespuestaResponse
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +25,16 @@ class ExamenFinalService:
 		self.db = db
 		self.intento_service = IntentoService(db)
 		self.quiz_service = QuizService(db)
+		self.inscripcion_service = InscripcionService(db)
 
 	async def get_examen_final(self, examen_final_id: uuid.UUID) -> models.ExamenFinal:
-		"""Obtener examen final por ID."""
-		stmt = select(models.ExamenFinal).where(models.ExamenFinal.id == examen_final_id)
+		"""Obtener examen final por ID con curso cargado (N-a-1 usa joinedload)."""
+		from sqlalchemy.orm import joinedload
+		stmt = (
+			select(models.ExamenFinal)
+			.options(joinedload(models.ExamenFinal.curso))
+			.where(models.ExamenFinal.id == examen_final_id)
+		)
 		result = await self.db.execute(stmt)
 		examen = result.scalar_one_or_none()
 		if not examen:
@@ -34,8 +42,13 @@ class ExamenFinalService:
 		return examen
 
 	async def get_examen_final_by_curso(self, curso_id: uuid.UUID) -> Optional[models.ExamenFinal]:
-		"""Obtener examen final de un curso."""
-		stmt = select(models.ExamenFinal).where(models.ExamenFinal.curso_id == curso_id)
+		"""Obtener examen final de un curso con curso cargado."""
+		from sqlalchemy.orm import joinedload
+		stmt = (
+			select(models.ExamenFinal)
+			.options(joinedload(models.ExamenFinal.curso))
+			.where(models.ExamenFinal.curso_id == curso_id)
+		)
 		result = await self.db.execute(stmt)
 		return result.scalar_one_or_none()
 
@@ -315,6 +328,8 @@ class ExamenFinalService:
 		self,
 		examen_final_id: uuid.UUID,
 		usuario_id: Optional[uuid.UUID] = None,
+		skip: int = 0,
+		limit: int = 100,
 	) -> List[models.Intento]:
 		"""Listar intentos de un examen final."""
 		stmt = select(models.Intento).where(models.Intento.examen_final_id == examen_final_id)
@@ -322,7 +337,129 @@ class ExamenFinalService:
 		if usuario_id:
 			stmt = stmt.where(models.Intento.usuario_id == usuario_id)
 		
-		stmt = stmt.order_by(models.Intento.numero_intento.desc())
+		stmt = stmt.order_by(models.Intento.numero_intento.desc()).offset(skip).limit(limit)
 		result = await self.db.execute(stmt)
 		return result.scalars().all()
+
+	async def get_inscripcion_curso_from_examen(
+		self,
+		examen_final_id: uuid.UUID,
+		usuario_id: uuid.UUID,
+	) -> models.InscripcionCurso:
+		"""
+		Obtener la inscripción del usuario al curso asociado al examen final.
+		Valida que el usuario esté inscrito en el curso.
+		"""
+		examen = await self.get_examen_final(examen_final_id)
+		
+		inscripcion = await self.inscripcion_service.get_inscripcion_by_usuario_curso(
+			usuario_id=usuario_id,
+			curso_id=examen.curso_id,
+		)
+		
+		if not inscripcion:
+			raise AuthorizationError("No estás inscrito en este curso")
+		
+		return inscripcion
+
+	async def get_intento_activo(
+		self,
+		examen_final_id: uuid.UUID,
+		usuario_id: uuid.UUID,
+		inscripcion_curso_id: uuid.UUID,
+	) -> models.Intento:
+		"""Obtener el intento activo (no finalizado) para un examen final."""
+		stmt = select(models.Intento).where(
+			and_(
+				models.Intento.usuario_id == usuario_id,
+				models.Intento.examen_final_id == examen_final_id,
+				models.Intento.inscripcion_curso_id == inscripcion_curso_id,
+				models.Intento.finalizado_en.is_(None),
+			)
+		)
+		result = await self.db.execute(stmt)
+		intento = result.scalar_one_or_none()
+		
+		if not intento:
+			raise ValidationError("No hay un intento activo para este examen final")
+		
+		return intento
+
+	async def construir_intento_result(
+		self,
+		intento: models.Intento,
+	) -> IntentoResult:
+		"""
+		Construir objeto IntentoResult completo después de enviar respuestas.
+		Incluye puntaje, respuestas y estadísticas.
+		"""
+		puntaje_total, puntaje_maximo, preguntas_correctas, total_preguntas = await self.calcular_puntaje(intento.id)
+		
+		examen = await self.get_examen_final(intento.examen_final_id)
+		
+		regla = await self.get_regla_acreditacion(
+			examen.curso_id,
+			examen_final_id=intento.examen_final_id,
+		)
+		
+		min_score = regla.min_score_aprobatorio if regla else Decimal("80.00")
+		porcentaje = (puntaje_total / puntaje_maximo * 100) if puntaje_maximo > 0 else Decimal("0")
+		
+		respuestas_stmt = await self.db.execute(
+			select(models.Respuesta)
+			.join(models.IntentoPregunta)
+			.where(models.IntentoPregunta.intento_id == intento.id)
+		)
+		respuestas = respuestas_stmt.scalars().all()
+		
+		return IntentoResult(
+			intento_id=intento.id,
+			puntaje=porcentaje,
+			puntaje_maximo=puntaje_maximo,
+			porcentaje=porcentaje,
+			resultado=intento.resultado,
+			aprobado=intento.resultado == ResultadoIntento.APROBADO,
+			min_score_aprobatorio=min_score,
+			preguntas_correctas=preguntas_correctas,
+			total_preguntas=total_preguntas,
+			respuestas=[RespuestaResponse.from_orm(r) for r in respuestas],
+		)
+
+	async def iniciar_intento_con_validacion(
+		self,
+		usuario_id: uuid.UUID,
+		examen_final_id: uuid.UUID,
+	) -> models.Intento:
+		"""
+		Iniciar intento de examen final con validación de inscripción.
+		Este método encapsula toda la lógica: obtiene inscripción, valida acceso e inicia intento.
+		"""
+		inscripcion = await self.get_inscripcion_curso_from_examen(examen_final_id, usuario_id)
+		
+		return await self.iniciar_intento(
+			usuario_id=usuario_id,
+			examen_final_id=examen_final_id,
+			inscripcion_curso_id=inscripcion.id,
+		)
+
+	async def enviar_respuestas_con_validacion(
+		self,
+		usuario_id: uuid.UUID,
+		examen_final_id: uuid.UUID,
+		respuestas: List[dict],
+	) -> IntentoResult:
+		"""
+		Enviar respuestas de un examen final con validación completa.
+		Este método encapsula toda la lógica: valida inscripción, obtiene intento activo, envía respuestas y construye resultado.
+		"""
+		inscripcion = await self.get_inscripcion_curso_from_examen(examen_final_id, usuario_id)
+		
+		intento_activo = await self.get_intento_activo(examen_final_id, usuario_id, inscripcion.id)
+		
+		intento = await self.enviar_respuestas(
+			intento_id=intento_activo.id,
+			respuestas=respuestas,
+		)
+		
+		return await self.construir_intento_result(intento)
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Button } from '@/shared/ui/button';
 import { Textarea } from '@/shared/ui/textarea';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';

@@ -4,18 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, CheckCircle2, Search } from 'lucide-react';
 import { Badge } from '@/shared/ui/badge';
 
 export const VerifyCertificatePage: React.FC = () => {
   const [hash, setHash] = useState('');
+  const [certificadoId, setCertificadoId] = useState('');
   const [hashToVerify, setHashToVerify] = useState<string | null>(null);
-  const { data: certificado, isLoading, error } = useVerificarCertificado(hashToVerify);
+  const [certificadoIdToVerify, setCertificadoIdToVerify] = useState<string | null>(null);
+  const { data: certificado, isLoading, error } = useVerificarCertificado(certificadoIdToVerify, hashToVerify);
 
   const handleVerify = () => {
-    if (hash.trim()) {
+    if (hash.trim() && certificadoId.trim()) {
       setHashToVerify(hash.trim());
+      setCertificadoIdToVerify(certificadoId.trim());
     }
   };
 
@@ -29,20 +32,32 @@ export const VerifyCertificatePage: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="hash">Hash de Verificación</Label>
-            <div className="flex gap-2">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="certificadoId">ID del Certificado</Label>
               <Input
-                id="hash"
-                value={hash}
-                onChange={(e) => setHash(e.target.value)}
-                placeholder="Ingresa el hash del certificado"
-                className="flex-1"
+                id="certificadoId"
+                value={certificadoId}
+                onChange={(e) => setCertificadoId(e.target.value)}
+                placeholder="Ingresa el ID del certificado"
+                className="w-full"
               />
-              <Button onClick={handleVerify} disabled={!hash.trim() || isLoading}>
-                <Search className="h-4 w-4 mr-2" />
-                Verificar
-              </Button>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hash">Hash de Verificación</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="hash"
+                  value={hash}
+                  onChange={(e) => setHash(e.target.value)}
+                  placeholder="Ingresa el hash del certificado"
+                  className="flex-1"
+                />
+                <Button onClick={handleVerify} disabled={!hash.trim() || !certificadoId.trim() || isLoading}>
+                  <Search className="h-4 w-4 mr-2" />
+                  Verificar
+                </Button>
+              </div>
             </div>
           </div>
 

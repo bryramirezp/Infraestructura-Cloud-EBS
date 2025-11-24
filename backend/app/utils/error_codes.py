@@ -1,0 +1,78 @@
+"""
+Códigos de error estandarizados por dominio para la API EBS.
+
+Estos códigos permiten que los clientes manejen errores de forma consistente
+y proporcionan contexto adicional sobre el tipo de error ocurrido.
+"""
+
+
+class ErrorCode:
+    """Base class para códigos de error"""
+    pass
+
+
+class AuthErrorCodes:
+    """Códigos de error de autenticación y autorización"""
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
+    AUTH_EXPIRED_TOKEN = "AUTH_EXPIRED_TOKEN"
+    AUTH_INSUFFICIENT_PERMISSIONS = "AUTH_INSUFFICIENT_PERMISSIONS"
+    AUTH_USER_NOT_FOUND = "AUTH_USER_NOT_FOUND"
+
+
+class ValidationErrorCodes:
+    """Códigos de error de validación"""
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    INVALID_FORMAT = "INVALID_FORMAT"
+    MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
+    INVALID_VALUE = "INVALID_VALUE"
+    FILE_TOO_LARGE = "FILE_TOO_LARGE"
+    INVALID_FILE_TYPE = "INVALID_FILE_TYPE"
+
+
+class NotFoundErrorCodes:
+    """Códigos de error de recursos no encontrados"""
+    NOT_FOUND = "NOT_FOUND"
+    RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
+    COURSE_NOT_FOUND = "COURSE_NOT_FOUND"
+    LESSON_NOT_FOUND = "LESSON_NOT_FOUND"
+    USER_NOT_FOUND = "USER_NOT_FOUND"
+    ENROLLMENT_NOT_FOUND = "ENROLLMENT_NOT_FOUND"
+    CERTIFICATE_NOT_FOUND = "CERTIFICATE_NOT_FOUND"
+    QUIZ_NOT_FOUND = "QUIZ_NOT_FOUND"
+    EXAM_NOT_FOUND = "EXAM_NOT_FOUND"
+
+
+class BusinessRuleErrorCodes:
+    """Códigos de error de reglas de negocio"""
+    BUSINESS_RULE_ERROR = "BUSINESS_RULE_ERROR"
+    ENROLLMENT_ALREADY_EXISTS = "ENROLLMENT_ALREADY_EXISTS"
+    EXAM_ALREADY_COMPLETED = "EXAM_ALREADY_COMPLETED"
+    QUIZ_ALREADY_COMPLETED = "QUIZ_ALREADY_COMPLETED"
+    NO_ACTIVE_ATTEMPT = "NO_ACTIVE_ATTEMPT"
+    MAX_ATTEMPTS_EXCEEDED = "MAX_ATTEMPTS_EXCEEDED"
+    COURSE_NOT_COMPLETED = "COURSE_NOT_COMPLETED"
+    INSUFFICIENT_SCORE = "INSUFFICIENT_SCORE"
+
+
+class CertificateErrorCodes:
+    """Códigos de error relacionados con certificados"""
+    CERTIFICATE_GENERATION_ERROR = "CERTIFICATE_GENERATION_ERROR"
+    CERTIFICATE_CREATION_ERROR = "CERTIFICATE_CREATION_ERROR"
+    CERTIFICATE_FILE_NOT_AVAILABLE = "CERTIFICATE_FILE_NOT_AVAILABLE"
+    CERTIFICATE_DOWNLOAD_ERROR = "CERTIFICATE_DOWNLOAD_ERROR"
+
+
+class StorageErrorCodes:
+    """Códigos de error de almacenamiento"""
+    S3_UPLOAD_ERROR = "S3_UPLOAD_ERROR"
+    S3_DOWNLOAD_ERROR = "S3_DOWNLOAD_ERROR"
+    FILE_NOT_FOUND = "FILE_NOT_FOUND"
+
+
+class InternalErrorCodes:
+    """Códigos de error internos del servidor"""
+    INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR"
+    DATABASE_ERROR = "DATABASE_ERROR"
+    SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
+

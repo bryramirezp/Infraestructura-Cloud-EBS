@@ -23,12 +23,8 @@ class InscripcionService:
 
 	async def get_curso(self, curso_id: uuid.UUID) -> models.Curso:
 		"""Obtener curso por ID."""
-		stmt = select(models.Curso).where(models.Curso.id == curso_id)
-		result = await self.db.execute(stmt)
-		curso = result.scalar_one_or_none()
-		if not curso:
-			raise NotFoundError("Curso", str(curso_id))
-		return curso
+		from app.utils.query_helpers import get_or_404
+		return await get_or_404(self.db, models.Curso, curso_id, "Curso")
 
 	async def get_inscripcion(self, inscripcion_id: uuid.UUID) -> models.InscripcionCurso:
 		"""Obtener inscripción por ID."""
@@ -65,6 +61,8 @@ class InscripcionService:
 		self,
 		usuario_id: uuid.UUID,
 		estado: Optional[EstadoInscripcion] = None,
+		skip: int = 0,
+		limit: int = 100,
 	) -> List[models.InscripcionCurso]:
 		"""Listar inscripciones de un usuario."""
 		stmt = (
@@ -76,7 +74,7 @@ class InscripcionService:
 		if estado:
 			stmt = stmt.where(models.InscripcionCurso.estado == estado)
 		
-		stmt = stmt.order_by(models.InscripcionCurso.fecha_inscripcion.desc())
+		stmt = stmt.order_by(models.InscripcionCurso.fecha_inscripcion.desc()).offset(skip).limit(limit)
 		result = await self.db.execute(stmt)
 		return result.scalars().all()
 

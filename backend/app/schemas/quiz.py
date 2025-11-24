@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 import uuid
 from datetime import datetime
@@ -12,11 +12,11 @@ from app.database.enums import TipoPregunta
 # =====================================================
 
 class QuizBase(BaseModel):
-    leccion_id: uuid.UUID
-    titulo: str
-    publicado: Optional[bool] = False
-    aleatorio: Optional[bool] = False
-    guarda_calificacion: Optional[bool] = False
+    leccion_id: uuid.UUID = Field(..., description="ID de la lección asociada")
+    titulo: str = Field(..., min_length=1, max_length=200, description="Título del quiz")
+    publicado: Optional[bool] = Field(False, description="Indica si el quiz está publicado")
+    aleatorio: Optional[bool] = Field(False, description="Indica si las preguntas se muestran en orden aleatorio")
+    guarda_calificacion: Optional[bool] = Field(False, description="Indica si se guarda la calificación del intento")
 
 
 class QuizCreate(QuizBase):
@@ -24,10 +24,10 @@ class QuizCreate(QuizBase):
 
 
 class QuizUpdate(BaseModel):
-    titulo: Optional[str] = None
-    publicado: Optional[bool] = None
-    aleatorio: Optional[bool] = None
-    guarda_calificacion: Optional[bool] = None
+    titulo: Optional[str] = Field(None, min_length=1, max_length=200, description="Título del quiz")
+    publicado: Optional[bool] = Field(None, description="Indica si el quiz está publicado")
+    aleatorio: Optional[bool] = Field(None, description="Indica si las preguntas se muestran en orden aleatorio")
+    guarda_calificacion: Optional[bool] = Field(None, description="Indica si se guarda la calificación del intento")
 
 
 class QuizResponse(QuizBase):
@@ -51,11 +51,11 @@ class QuizDetailResponse(QuizResponse):
 # =====================================================
 
 class PreguntaBase(BaseModel):
-    quiz_id: Optional[uuid.UUID] = None
-    examen_final_id: Optional[uuid.UUID] = None
-    enunciado: str
-    puntos: Optional[int] = None
-    orden: Optional[int] = None
+    quiz_id: Optional[uuid.UUID] = Field(None, description="ID del quiz asociado (opcional si pertenece a examen final)")
+    examen_final_id: Optional[uuid.UUID] = Field(None, description="ID del examen final asociado (opcional si pertenece a quiz)")
+    enunciado: str = Field(..., min_length=1, max_length=2000, description="Texto del enunciado de la pregunta")
+    puntos: Optional[int] = Field(None, ge=0, description="Puntos que vale la pregunta")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición de la pregunta")
 
 
 class PreguntaCreate(PreguntaBase):
@@ -63,9 +63,9 @@ class PreguntaCreate(PreguntaBase):
 
 
 class PreguntaUpdate(BaseModel):
-    enunciado: Optional[str] = None
-    puntos: Optional[int] = None
-    orden: Optional[int] = None
+    enunciado: Optional[str] = Field(None, min_length=1, max_length=2000, description="Texto del enunciado de la pregunta")
+    puntos: Optional[int] = Field(None, ge=0, description="Puntos que vale la pregunta")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición de la pregunta")
 
 
 class PreguntaResponse(PreguntaBase):
@@ -82,15 +82,15 @@ class PreguntaResponse(PreguntaBase):
 # =====================================================
 
 class PreguntaConfigBase(BaseModel):
-    pregunta_id: uuid.UUID
-    tipo: TipoPregunta
-    abierta_modelo_respuesta: Optional[str] = None
-    om_seleccion_multiple: Optional[bool] = None
-    om_min_selecciones: Optional[int] = None
-    om_max_selecciones: Optional[int] = None
-    vf_respuesta_correcta: Optional[bool] = None
-    penaliza_error: Optional[bool] = False
-    puntos_por_opcion: Optional[int] = None
+    pregunta_id: uuid.UUID = Field(..., description="ID de la pregunta asociada")
+    tipo: TipoPregunta = Field(..., description="Tipo de pregunta (ABIERTA, OPCION_MULTIPLE, VERDADERO_FALSO)")
+    abierta_modelo_respuesta: Optional[str] = Field(None, max_length=5000, description="Modelo de respuesta esperada para preguntas abiertas")
+    om_seleccion_multiple: Optional[bool] = Field(None, description="Indica si permite selección múltiple (solo para OPCION_MULTIPLE)")
+    om_min_selecciones: Optional[int] = Field(None, ge=1, description="Mínimo de opciones a seleccionar (solo para selección múltiple)")
+    om_max_selecciones: Optional[int] = Field(None, ge=1, description="Máximo de opciones a seleccionar (solo para selección múltiple)")
+    vf_respuesta_correcta: Optional[bool] = Field(None, description="Respuesta correcta para preguntas verdadero/falso")
+    penaliza_error: Optional[bool] = Field(False, description="Indica si se penaliza por respuesta incorrecta")
+    puntos_por_opcion: Optional[int] = Field(None, ge=0, description="Puntos asignados por cada opción seleccionada correctamente")
 
 
 class PreguntaConfigCreate(PreguntaConfigBase):
@@ -98,14 +98,14 @@ class PreguntaConfigCreate(PreguntaConfigBase):
 
 
 class PreguntaConfigUpdate(BaseModel):
-    tipo: Optional[TipoPregunta] = None
-    abierta_modelo_respuesta: Optional[str] = None
-    om_seleccion_multiple: Optional[bool] = None
-    om_min_selecciones: Optional[int] = None
-    om_max_selecciones: Optional[int] = None
-    vf_respuesta_correcta: Optional[bool] = None
-    penaliza_error: Optional[bool] = None
-    puntos_por_opcion: Optional[int] = None
+    tipo: Optional[TipoPregunta] = Field(None, description="Tipo de pregunta (ABIERTA, OPCION_MULTIPLE, VERDADERO_FALSO)")
+    abierta_modelo_respuesta: Optional[str] = Field(None, max_length=5000, description="Modelo de respuesta esperada para preguntas abiertas")
+    om_seleccion_multiple: Optional[bool] = Field(None, description="Indica si permite selección múltiple (solo para OPCION_MULTIPLE)")
+    om_min_selecciones: Optional[int] = Field(None, ge=1, description="Mínimo de opciones a seleccionar (solo para selección múltiple)")
+    om_max_selecciones: Optional[int] = Field(None, ge=1, description="Máximo de opciones a seleccionar (solo para selección múltiple)")
+    vf_respuesta_correcta: Optional[bool] = Field(None, description="Respuesta correcta para preguntas verdadero/falso")
+    penaliza_error: Optional[bool] = Field(None, description="Indica si se penaliza por respuesta incorrecta")
+    puntos_por_opcion: Optional[int] = Field(None, ge=0, description="Puntos asignados por cada opción seleccionada correctamente")
 
 
 class PreguntaConfigResponse(PreguntaConfigBase):
@@ -121,10 +121,10 @@ class PreguntaConfigResponse(PreguntaConfigBase):
 # =====================================================
 
 class OpcionBase(BaseModel):
-    pregunta_id: uuid.UUID
-    texto: str
-    es_correcta: Optional[bool] = False
-    orden: Optional[int] = None
+    pregunta_id: uuid.UUID = Field(..., description="ID de la pregunta asociada")
+    texto: str = Field(..., min_length=1, max_length=1000, description="Texto de la opción")
+    es_correcta: Optional[bool] = Field(False, description="Indica si esta opción es la respuesta correcta")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición de la opción")
 
 
 class OpcionCreate(OpcionBase):
@@ -132,9 +132,9 @@ class OpcionCreate(OpcionBase):
 
 
 class OpcionUpdate(BaseModel):
-    texto: Optional[str] = None
-    es_correcta: Optional[bool] = None
-    orden: Optional[int] = None
+    texto: Optional[str] = Field(None, min_length=1, max_length=1000, description="Texto de la opción")
+    es_correcta: Optional[bool] = Field(None, description="Indica si esta opción es la respuesta correcta")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición de la opción")
 
 
 class OpcionResponse(OpcionBase):

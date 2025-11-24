@@ -4,7 +4,7 @@ import { useModulos } from '@/entities/module/api/use-module';
 import { ModuloCard } from '@/widgets/module';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import type { Modulo } from '@/entities/module/model/types';
 

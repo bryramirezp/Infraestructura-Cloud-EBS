@@ -10,13 +10,12 @@ const API_BASE_URL = (import.meta as any).env.VITE_API_GATEWAY_URL || 'https://a
 export const API_ENDPOINTS = {
   // Authentication (Cognito Hosted UI + Backend)
   AUTH: {
-    LOGIN: '/auth/login',      // Redirección a Cognito Hosted UI
+    LOGIN: '/auth/login',       // Iniciar flujo PKCE - redirige a Cognito Hosted UI
     LOGOUT: '/auth/logout',     // Redirección a Cognito logout
     CALLBACK: '/auth/callback',  // Callback de Cognito con tokens
     REFRESH: '/auth/refresh',   // Refresh tokens
     TOKENS: '/auth/tokens',     // Obtener tokens del usuario actual (opcional)
-    PROFILE: '/auth/profile',    // Perfil del usuario autenticado
-    SET_TOKENS: '/auth/set-tokens', // Enviar tokens al backend para establecer cookies
+    SET_TOKENS: '/auth/set-tokens', // Enviar tokens al backend para establecer cookies (solo desarrollo)
   },
 
   // Módulos
@@ -54,20 +53,18 @@ export const API_ENDPOINTS = {
     BASE: '/quizzes',
     BY_ID: (id: string) => `/quizzes/${id}`,
     PREGUNTAS: (id: string) => `/quizzes/${id}/preguntas`,
-    INICIAR: (id: string) => `/quizzes/${id}/iniciar`,
-    ENVIAR: (id: string) => `/quizzes/${id}/enviar`,
-    RESULTADOS: (id: string) => `/quizzes/${id}/resultados`,
     INTENTOS: (id: string) => `/quizzes/${id}/intentos`,
+    INTENTO_BY_ID: (quizId: string, intentoId: string) => `/quizzes/${quizId}/intentos/${intentoId}`,
+    RESULTADOS: (id: string) => `/quizzes/${id}/resultados`,
   },
 
   // Exámenes Finales
   EXAMENES_FINALES: {
     BASE: '/examenes-finales',
     BY_ID: (id: string) => `/examenes-finales/${id}`,
-    BY_CURSO: (cursoId: string) => `/examenes-finales?curso_id=${cursoId}`,
     PREGUNTAS: (id: string) => `/examenes-finales/${id}/preguntas`,
-    INICIAR: (id: string) => `/examenes-finales/${id}/iniciar`,
-    ENVIAR: (id: string) => `/examenes-finales/${id}/enviar`,
+    INTENTOS: (id: string) => `/examenes-finales/${id}/intentos`,
+    INTENTO_BY_ID: (examenId: string, intentoId: string) => `/examenes-finales/${examenId}/intentos/${intentoId}`,
     RESULTADOS: (id: string) => `/examenes-finales/${id}/resultados`,
   },
 
@@ -88,27 +85,25 @@ export const API_ENDPOINTS = {
     BY_ID: (id: string) => `/inscripciones/${id}`,
     BY_USUARIO: (usuarioId: string) => `/inscripciones?usuario_id=${usuarioId}`,
     BY_CURSO: (cursoId: string) => `/inscripciones?curso_id=${cursoId}`,
-    ACTUALIZAR_ESTADO: (id: string) => `/inscripciones/${id}/estado`,
-    CERTIFICADO: (id: string) => `/inscripciones/${id}/certificado`,
+    ACTUALIZAR_ESTADO: (id: string) => `/inscripciones/${id}`,
+    CERTIFICADO: (id: string) => `/certificados/inscripciones/${id}`,
   },
 
   // Certificados
   CERTIFICADOS: {
     BASE: '/certificados',
     BY_ID: (id: string) => `/certificados/${id}`,
-    BY_INSCRIPCION: (inscripcionId: string) => `/certificados?inscripcion_curso_id=${inscripcionId}`,
+    BY_INSCRIPCION: (inscripcionId: string) => `/certificados/inscripciones/${inscripcionId}`,
     BY_USUARIO: (usuarioId: string) => `/certificados?usuario_id=${usuarioId}`,
-    DESCARGAR: (id: string) => `/certificados/${id}/descargar`,
-    VERIFICAR: (hash: string) => `/certificados/verificar/${hash}`,
-    GENERAR: (inscripcionId: string) => `/certificados/generar/${inscripcionId}`,
+    VERIFICAR: (id: string, hash: string) => `/certificados/${id}/verificar?hash=${hash}`,
   },
 
   // Usuarios
   USUARIOS: {
     BASE: '/usuarios',
     BY_ID: (id: string) => `/usuarios/${id}`,
-    PERFIL: '/usuarios/perfil',
-    ACTUALIZAR_PERFIL: '/usuarios/perfil',
+    ME: '/usuarios/me',
+    ACTUALIZAR_PERFIL: '/usuarios/me',
     ROLES: (id: string) => `/usuarios/${id}/roles`,
     ASIGNAR_ROL: (id: string) => `/usuarios/${id}/roles`,
     ELIMINAR_ROL: (id: string, rolId: string) => `/usuarios/${id}/roles/${rolId}`,

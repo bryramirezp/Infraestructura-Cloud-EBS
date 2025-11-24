@@ -58,15 +58,15 @@ export const useQuizResultados = (quizId: string | null | undefined) => {
 };
 
 /**
- * Hook para iniciar un intento de quiz
+ * Hook para crear un intento de quiz
  * Crea un nuevo intento en el backend
  */
-export const useIniciarQuiz = () => {
+export const useCrearIntentoQuiz = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (quizId: string) =>
-      apiClient.iniciarQuiz(quizId),
+      apiClient.crearIntentoQuiz(quizId),
     onSuccess: (_, quizId) => {
       // Invalidar intentos del quiz para refrescar
       queryClient.invalidateQueries({ queryKey: ['quiz', quizId, 'intentos'] });
@@ -76,14 +76,14 @@ export const useIniciarQuiz = () => {
 };
 
 /**
- * Hook para enviar las respuestas de un quiz
+ * Hook para enviar las respuestas de un intento de quiz
  */
-export const useEnviarQuiz = () => {
+export const useEnviarIntentoQuiz = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ quizId, respuestas }: { quizId: string; respuestas: Respuesta[] }) =>
-      apiClient.enviarQuiz(quizId, respuestas),
+    mutationFn: ({ quizId, intentoId, respuestas }: { quizId: string; intentoId: string; respuestas: Respuesta[] }) =>
+      apiClient.enviarIntentoQuiz(quizId, intentoId, respuestas),
     onSuccess: (_, variables) => {
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['quiz', variables.quizId] });

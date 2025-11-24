@@ -19,57 +19,95 @@ def _pkce_cookie_name(state: str) -> str:
 
 
 @router.get("/login")
-async def login():
-    """Start the OAuth2 PKCE flow by redirecting to Cognito hosted UI."""
-    state = secrets.token_urlsafe(16)
-    nonce = secrets.token_urlsafe(16)
+async def login(request: Request):
+    """
+    Iniciar flujo de autenticación PKCE con Cognito Hosted UI.
+    
+    Genera la URL de autorización de Cognito con PKCE y redirige al usuario.
+    El code_verifier se almacena en una cookie HTTP-only para validación posterior.
+    """
+    # Generate state and nonce for security
+    state = secrets.token_urlsafe(32)
+    nonce = secrets.token_urlsafe(32)
+    
+    # Build authorization URL with PKCE
     authorize_url, code_verifier = await service.build_authorization_url(state=state, nonce=nonce)
-
-    response = RedirectResponse(authorize_url, status_code=status.HTTP_302_FOUND)
-
-    # Store PKCE verifier tied to state in an HTTP-only cookie
-    response.set_cookie(
-        _pkce_cookie_name(state),
-        code_verifier,
-        max_age=300,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-        domain=settings.cookie_domain,
-    )
-
-    # Also store a state cookie (HTTP-only) to validate callback
-    response.set_cookie(
+    
+    # Create redirect response to Cognito Hosted UI
+    redirect_response = RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
+    
+    # Store state and PKCE verifier in HTTP-only cookies
+    redirect_response.set_cookie(
         "auth_state",
         state,
-        max_age=300,
+        max_age=600,  # 10 minutes
         httponly=True,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
-
-    return response
+    
+    pkce_name = _pkce_cookie_name(state)
+    redirect_response.set_cookie(
+        pkce_name,
+        code_verifier,
+        max_age=600,  # 10 minutes
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+    )
+    
+    # Store nonce for token validation (optional, but recommended)
+    redirect_response.set_cookie(
+        "auth_nonce",
+        nonce,
+        max_age=600,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+    )
+    
+    return redirect_response
 
 
 @router.get("/callback")
+@router.post("/callback")
 async def callback(request: Request):
-    """Handle OAuth2 callback: exchange code for tokens and set auth cookies."""
+    """Handle OAuth2 callback: exchange code for tokens and set auth cookies.
+    
+    Supports both GET (from Cognito redirect) and POST (from frontend with code_verifier).
+    If code_verifier is in request body (POST), use it. Otherwise, try to get from cookies (GET).
+    """
     code = request.query_params.get("code")
     state = request.query_params.get("state")
 
     if not code or not state:
         raise AuthenticationError("Missing code or state in callback")
 
-    # Validate state cookie exists and matches
-    cookie_state = request.cookies.get("auth_state")
-    if not cookie_state or cookie_state != state:
-        raise AuthenticationError("Invalid or missing state cookie")
-
-    pkce_name = _pkce_cookie_name(state)
-    code_verifier = request.cookies.get(pkce_name)
+    # Try to get code_verifier from request body (POST from frontend) or cookies (GET from direct redirect)
+    code_verifier = None
+    
+    if request.method == "POST":
+        # Frontend sends code_verifier in body
+        try:
+            body = await request.json()
+            code_verifier = body.get("code_verifier")
+        except Exception:
+            pass
+    
+    # If not in body, try to get from cookies (backend-generated PKCE flow)
+    if not code_verifier:
+        # Validate state cookie exists and matches
+        cookie_state = request.cookies.get("auth_state")
+        if cookie_state and cookie_state == state:
+            pkce_name = _pkce_cookie_name(state)
+            code_verifier = request.cookies.get(pkce_name)
+    
+    # If still no code_verifier and PKCE is required, raise error
     if settings.cognito_use_pkce and not code_verifier:
-        raise AuthenticationError("Missing PKCE verifier cookie")
+        raise AuthenticationError("Missing PKCE verifier. Please ensure you're using the correct authentication flow.")
 
     try:
         tokens = await service.exchange_code_for_tokens(code=code, code_verifier=code_verifier)
@@ -95,23 +133,46 @@ async def callback(request: Request):
         )
     except (InvalidTokenError, DecodeError, Exception):
         # Token invalid or cannot be decoded — deny access
-        return RedirectResponse(url="/unauthorized", status_code=status.HTTP_302_FOUND)
+        frontend_base_url = settings.cognito_redirect_uri.rsplit("/auth/callback", 1)[0] if settings.cognito_redirect_uri else "http://localhost:5173"
+        return RedirectResponse(url=f"{frontend_base_url}/unauthorized", status_code=status.HTTP_302_FOUND)
 
     role = get_user_role(payload)
+    
+    # Determine frontend redirect target based on role
+    # Use frontend routes (not backend routes)
     if role == UserRole.STUDENT:
-        target = "/StudentDashboard"
+        target = "/dashboard"  # Frontend route
     elif role == UserRole.COORDINATOR:
-        target = "/CoordinatorDashboard"
+        target = "/dashboard"  # Frontend route
     elif role == UserRole.ADMIN:
-        target = "/AdminDashboard"
+        target = "/admin/dashboard"  # Frontend route
     else:
-        target = "/unauthorized"
+        target = "/unauthorized"  # Frontend route
+    
+    # Get frontend URL from redirect URI (remove /auth/callback)
+    # cognito_redirect_uri is typically: http://localhost:5173/auth/callback
+    # We need: http://localhost:5173
+    frontend_base_url = settings.cognito_redirect_uri.rsplit("/auth/callback", 1)[0] if settings.cognito_redirect_uri else "http://localhost:5173"
+    frontend_url = f"{frontend_base_url}{target}"
+    
+    # If request is POST (from frontend with code_verifier), return JSON instead of redirect
+    if request.method == "POST":
+        response = JSONResponse({
+            "status": "success",
+            "redirect_url": frontend_url,
+            "user": {
+                "sub": payload.get("sub"),
+                "email": payload.get("email"),
+                "role": role.value if role else "UNKNOWN",
+            }
+        })
+    else:
+        # GET request (direct redirect from Cognito), use redirect response
+        response = RedirectResponse(url=frontend_url, status_code=status.HTTP_302_FOUND)
 
-    redirect_response = RedirectResponse(url=target, status_code=status.HTTP_302_FOUND)
-
-    # Set auth cookies (HTTP-only)
+    # Set auth cookies (HTTP-only) - works for both JSONResponse and RedirectResponse
     if refresh_token:
-        redirect_response.set_cookie(
+        response.set_cookie(
             "refresh_token",
             refresh_token,
             max_age=settings.cookie_refresh_max_age,
@@ -121,7 +182,7 @@ async def callback(request: Request):
             domain=settings.cookie_domain,
         )
 
-    redirect_response.set_cookie(
+    response.set_cookie(
         "access_token",
         access_token,
         max_age=settings.cookie_access_max_age,
@@ -133,7 +194,7 @@ async def callback(request: Request):
 
     id_token = tokens.get("id_token")
     if id_token:
-        redirect_response.set_cookie(
+        response.set_cookie(
             "id_token",
             id_token,
             max_age=settings.cookie_access_max_age,
@@ -143,11 +204,16 @@ async def callback(request: Request):
             domain=settings.cookie_domain,
         )
 
-    # Clear PKCE and state cookies
-    redirect_response.delete_cookie(pkce_name, domain=settings.cookie_domain)
-    redirect_response.delete_cookie("auth_state", domain=settings.cookie_domain)
+    # Clear PKCE and state cookies (only if they exist - might not exist if using frontend PKCE)
+    if request.cookies.get("auth_state"):
+        response.delete_cookie("auth_state", domain=settings.cookie_domain)
+    pkce_name = _pkce_cookie_name(state)
+    if request.cookies.get(pkce_name):
+        response.delete_cookie(pkce_name, domain=settings.cookie_domain)
+    if request.cookies.get("auth_nonce"):
+        response.delete_cookie("auth_nonce", domain=settings.cookie_domain)
 
-    return redirect_response
+    return response
 
 
 @router.post("/refresh")
@@ -232,7 +298,13 @@ async def get_tokens(request: Request):
 async def set_tokens(request: Request):
     """Set authentication tokens as HTTP-only cookies from request body.
     Used when frontend authenticates directly with Cognito (e.g., NEW_PASSWORD_REQUIRED flow).
+    
+    WARNING: This endpoint is a security risk and should only be used in development.
+    In production, tokens should only be set via the /callback endpoint.
     """
+    if settings.is_production:
+        raise AuthenticationError("This endpoint is not available in production")
+    
     try:
         body = await request.json()
         access_token = body.get("access_token")
@@ -306,38 +378,6 @@ async def set_tokens(request: Request):
         raise AuthenticationError(f"Failed to set tokens: {str(e)}")
 
 
-@router.get("/profile")
-async def get_profile(request: Request):
-    """Get current user profile from access token."""
-    access_token = request.cookies.get("access_token")
-    
-    if not access_token:
-        raise AuthenticationError("No access token found in cookies")
-    
-    # Decode token to get user info
-    try:
-        public_key = await get_rsa_key(access_token)
-        payload = jwt.decode(
-            access_token,
-            public_key,
-            algorithms=["RS256"],
-            audience=None,
-            issuer=settings.cognito_issuer,
-            options={"verify_signature": True, "verify_aud": False, "verify_exp": True},
-        )
-    except (InvalidTokenError, DecodeError, Exception):
-        raise AuthenticationError("Invalid access token")
-    
-    role = get_user_role(payload)
-    
-    return {
-        "user_id": payload.get("sub"),
-        "email": payload.get("email"),
-        "name": payload.get("name"),
-        "role": role.value if role else "UNKNOWN",
-        "groups": payload.get("cognito:groups", []),
-        "exp": payload.get("exp"),
-    }
 
 
 __all__ = ["router"]

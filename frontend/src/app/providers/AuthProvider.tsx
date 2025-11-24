@@ -1,6 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useAuth as useAuthLogic } from '../../shared/hooks/use-auth';
-import type { AppRole } from '../../shared/lib/cognito-roles';
+import type { AppRole } from '../../shared/auth/cognito-roles';
 
 interface User {
   user_id: string;

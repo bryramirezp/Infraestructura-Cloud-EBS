@@ -8,7 +8,7 @@ import { Button } from '@/shared/ui/button';
 import { Progress } from '@/shared/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, BookOpen, Award, ArrowRight } from 'lucide-react';
 import type { EstadoInscripcion } from '@/entities/enrollment/model/types';
 

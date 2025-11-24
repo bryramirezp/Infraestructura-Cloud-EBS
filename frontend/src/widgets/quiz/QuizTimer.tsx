@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/shared/ui/card';
 import { Clock, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { cn } from '@/shared/lib/utils';
 
 export interface QuizTimerProps {

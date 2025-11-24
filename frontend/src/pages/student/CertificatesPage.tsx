@@ -1,25 +1,27 @@
 import React from 'react';
 import { useCertificadosByUsuario } from '@/entities/certificate/api/use-certificate';
-import { useDescargarCertificado } from '@/entities/certificate/api/use-certificate';
+import { useObtenerCertificado } from '@/entities/certificate/api/use-certificate';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, Award, Download, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const CertificatesPage: React.FC = () => {
   const { user } = useAuth();
   const { data: certificados, isLoading, error } = useCertificadosByUsuario(user?.id);
-  const descargarMutation = useDescargarCertificado();
+  const obtenerMutation = useObtenerCertificado();
 
   const handleDescargar = async (certificadoId: string) => {
     try {
-      const resultado = await descargarMutation.mutateAsync(certificadoId);
-      if (resultado?.url) {
-        window.open(resultado.url, '_blank');
+      const resultado = await obtenerMutation.mutateAsync(certificadoId);
+      if (resultado?.download_url) {
+        window.open(resultado.download_url, '_blank');
+      } else if (resultado?.estado === 'PROCESSING') {
+        toast.info('El certificado está siendo generado. Por favor, intenta más tarde.');
       } else {
         toast.error('No se pudo obtener la URL de descarga');
       }
@@ -113,7 +115,7 @@ export const CertificatesPage: React.FC = () => {
                   )}
                   <Button
                     onClick={() => handleDescargar(certificado.id)}
-                    disabled={descargarMutation.isPending}
+                    disabled={obtenerMutation.isPending || certificado.estado === 'PROCESSING'}
                     className="w-full gap-2"
                   >
                     <Download className="h-4 w-4" />

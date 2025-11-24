@@ -1,9 +1,7 @@
 ﻿// Pages exports
 export { LandingPage as HomePage } from './public/HomePage';
 export { AboutPage } from './public/AboutPage';
-export { LoginPage } from './auth/LoginPage';
-export { AdminLoginPage } from './auth/AdminLoginPage';
-export { SetNewPasswordPage } from './auth/SetNewPasswordPage';
+// Auth pages removed - using Cognito Hosted UI
 export { VerifyCertificatePage } from './public/VerifyCertificatePage';
 export { default as StudentDashboard } from './student/StudentDashboard';
 export { default as CoursesPage } from './student/Courses';

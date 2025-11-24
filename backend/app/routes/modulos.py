@@ -27,7 +27,13 @@ async def list_modulos(
 	db: AsyncSession = Depends(get_db),
 	publicado: Optional[bool] = Query(None, description="Filtrar por estado publicado"),
 ):
-	"""Listar módulos disponibles, con filtro opcional por publicación."""
+	"""
+	Listar módulos disponibles, con filtro opcional por publicación.
+	
+	- **Permisos**: Endpoint público (no requiere autenticación)
+	- **Parámetros**: `publicado` - Filtrar por estado publicado (opcional)
+	- **Respuesta**: Lista de módulos disponibles
+	"""
 	service = ModuloService(db)
 	modulos = await service.list_modulos(publicado=publicado)
 	return modulos
@@ -38,7 +44,13 @@ async def get_modulo(
 	modulo_id: UUID,
 	db: AsyncSession = Depends(get_db),
 ):
-	"""Obtener módulo y sus cursos asociados."""
+	"""
+	Obtener módulo y sus cursos asociados.
+	
+	- **Permisos**: Endpoint público (no requiere autenticación)
+	- **Parámetros**: `modulo_id` - ID del módulo
+	- **Respuesta**: Detalles del módulo con sus cursos asociados
+	"""
 	service = ModuloService(db)
 	modulo = await service.get_modulo_with_cursos(modulo_id)
 	cursos = sorted(modulo.cursos, key=lambda rel: rel.slot)
@@ -67,7 +79,13 @@ async def list_cursos_by_modulo(
 	modulo_id: UUID,
 	db: AsyncSession = Depends(get_db),
 ):
-	"""Listar cursos asociados a un módulo."""
+	"""
+	Listar cursos asociados a un módulo.
+	
+	- **Permisos**: Endpoint público (no requiere autenticación)
+	- **Parámetros**: `modulo_id` - ID del módulo
+	- **Respuesta**: Lista de cursos asociados al módulo
+	"""
 	service = ModuloService(db)
 	cursos = await service.list_cursos_by_modulo(modulo_id)
 	return cursos
@@ -80,7 +98,15 @@ async def list_lecciones_by_modulo(
 	publicado: Optional[bool] = Query(None, description="Filtrar por estado publicado"),
 	token_payload: Optional[dict] = Depends(get_current_user),
 ):
-	"""Listar lecciones de un módulo."""
+	"""
+	Listar lecciones de un módulo.
+	
+	- **Permisos**: Endpoint público, pero filtra lecciones no publicadas si el usuario no está inscrito
+	- **Parámetros**: 
+	  - `modulo_id` - ID del módulo
+	  - `publicado` - Filtrar por estado publicado (opcional)
+	- **Respuesta**: Lista de lecciones del módulo (solo publicadas si el usuario no está inscrito)
+	"""
 	service = LeccionService(db)
 	
 	usuario_id = None
@@ -111,7 +137,13 @@ async def create_modulo(
 	_: dict = Depends(require_role([UserRole.ADMIN])),
 	db: AsyncSession = Depends(get_db),
 ):
-	"""Crear un nuevo módulo (solo administradores)."""
+	"""
+	Crear un nuevo módulo.
+	
+	- **Permisos**: Requiere rol de administrador
+	- **Parámetros**: Datos del nuevo módulo
+	- **Respuesta**: Módulo creado
+	"""
 	service = ModuloService(db)
 	modulo = await service.create_modulo(payload.dict())
 	return modulo
@@ -124,7 +156,13 @@ async def update_modulo(
 	_: dict = Depends(require_role([UserRole.ADMIN])),
 	db: AsyncSession = Depends(get_db),
 ):
-	"""Actualizar un módulo existente (solo administradores)."""
+	"""
+	Actualizar un módulo existente.
+	
+	- **Permisos**: Requiere rol de administrador
+	- **Parámetros**: `modulo_id` - ID del módulo, datos actualizados
+	- **Respuesta**: Módulo actualizado
+	"""
 	service = ModuloService(db)
 	modulo = await service.get_modulo(modulo_id)
 	updated = await service.update_modulo(modulo, payload.dict(exclude_unset=True))

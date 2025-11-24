@@ -4,7 +4,7 @@ import { useModulo, useCursosByModulo } from '@/entities/module/api/use-module';
 import { useInscribirEnCurso } from '@/entities/course/api/use-course';
 import { ModuloHeader, ModuloCursosList } from '@/widgets/module';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Alert, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/app/providers/AuthProvider';

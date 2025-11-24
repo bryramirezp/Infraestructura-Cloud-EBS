@@ -39,8 +39,12 @@ class LeccionService:
 		return lecciones
 
 	async def get_leccion(self, leccion_id: uuid.UUID) -> models.Leccion:
-		"""Obtener una lección por ID."""
-		stmt = select(models.Leccion).where(models.Leccion.id == leccion_id)
+		"""Obtener una lección por ID con módulo cargado (N-a-1 usa joinedload)."""
+		stmt = (
+			select(models.Leccion)
+			.options(joinedload(models.Leccion.modulo))
+			.where(models.Leccion.id == leccion_id)
+		)
 		result = await self.db.execute(stmt)
 		leccion = result.scalar_one_or_none()
 		if not leccion:
@@ -48,10 +52,13 @@ class LeccionService:
 		return leccion
 
 	async def get_leccion_with_contenido(self, leccion_id: uuid.UUID) -> models.Leccion:
-		"""Obtener lección con su contenido."""
+		"""Obtener lección con su contenido y módulo (optimizado)."""
 		stmt = (
 			select(models.Leccion)
-			.options(selectinload(models.Leccion.contenido))
+			.options(
+				joinedload(models.Leccion.modulo),
+				selectinload(models.Leccion.contenido)
+			)
 			.where(models.Leccion.id == leccion_id)
 		)
 		result = await self.db.execute(stmt)
@@ -62,12 +69,9 @@ class LeccionService:
 
 	async def get_modulo(self, modulo_id: uuid.UUID) -> models.Modulo:
 		"""Obtener módulo por ID."""
-		stmt = select(models.Modulo).where(models.Modulo.id == modulo_id)
-		result = await self.db.execute(stmt)
-		modulo = result.scalar_one_or_none()
-		if not modulo:
-			raise NotFoundError("Módulo", str(modulo_id))
-		return modulo
+		from app.services.modulo_service import ModuloService
+		modulo_service = ModuloService(self.db)
+		return await modulo_service.get_modulo(modulo_id)
 
 	async def validate_modulo_fechas(self, modulo: models.Modulo) -> None:
 		"""Validar que el módulo esté dentro de sus fechas de disponibilidad."""

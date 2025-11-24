@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, Mail, Users, Shield, Database, Save, Edit, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { Alert, AlertTitle, AlertDescription } from '@/shared/ui/Alert';
+import { Alert, AlertTitle, AlertDescription } from '@/shared/ui/alert';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { useTheme } from '@/app/styles/theme';
 import { Input } from '@/shared/ui/input';

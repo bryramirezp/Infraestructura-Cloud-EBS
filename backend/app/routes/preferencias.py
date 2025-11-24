@@ -28,7 +28,12 @@ async def get_preferencias(
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
 ):
-	"""Obtener preferencias de notificación del usuario autenticado."""
+	"""
+	Obtener preferencias de notificación del usuario autenticado.
+	
+	- **Permisos**: Requiere autenticación
+	- **Respuesta**: Preferencias de notificación del usuario
+	"""
 	service = PreferenciaService(db)
 	usuario_service = UsuarioService(db)
 	
@@ -50,7 +55,13 @@ async def update_preferencias(
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
 ):
-	"""Actualizar preferencias de notificación del usuario autenticado."""
+	"""
+	Actualizar preferencias de notificación del usuario autenticado.
+	
+	- **Permisos**: Requiere autenticación
+	- **Parámetros**: Preferencias a actualizar (email_recordatorios, email_motivacion, email_resultados)
+	- **Respuesta**: Preferencias actualizadas
+	"""
 	service = PreferenciaService(db)
 	usuario_service = UsuarioService(db)
 	

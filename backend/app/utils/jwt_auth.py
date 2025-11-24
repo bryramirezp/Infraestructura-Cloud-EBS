@@ -1,7 +1,7 @@
 import jwt
 from jwt.exceptions import InvalidTokenError, DecodeError
 import httpx
-from fastapi import HTTPException, Security, status
+from fastapi import HTTPException, Security, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict
 import logging
@@ -10,7 +10,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 class JWKSCache:
@@ -119,10 +119,29 @@ async def get_rsa_key(token: str) -> str:
     )
 
 
-async def verify_token(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
-    """Verify JWT token from Cognito and return payload"""
-    token = credentials.credentials
+async def get_token_from_request(request: Request, credentials: Optional[HTTPAuthorizationCredentials] = None) -> str:
+    """Extract JWT token from cookies (preferred) or Authorization header (fallback)"""
+    # Priority 1: HTTP-only cookies (more secure)
+    access_token = request.cookies.get("access_token")
+    if access_token:
+        logger.debug("Token found in cookies")
+        return access_token
     
+    # Priority 2: Authorization header (backward compatibility)
+    if credentials and credentials.credentials:
+        logger.debug("Token found in Authorization header")
+        return credentials.credentials
+    
+    # No token found
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No access token found. Please authenticate.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def verify_token(token: str) -> Dict:
+    """Verify JWT token from Cognito and return payload"""
     try:
         public_key = await get_rsa_key(token)
         
@@ -158,9 +177,13 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Security(secu
         )
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
-    """Dependency to get current authenticated user from token"""
-    return await verify_token(credentials)
+async def get_current_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security)
+) -> Dict:
+    """Dependency to get current authenticated user from token (cookies preferred, headers as fallback)"""
+    token = await get_token_from_request(request, credentials)
+    return await verify_token(token)
 
 
 def get_user_id_from_token(token_payload: Dict) -> Optional[str]:

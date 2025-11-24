@@ -22,7 +22,7 @@ from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Lecciones"])
+router = APIRouter(prefix="/lecciones", tags=["Lecciones"])
 
 
 @router.get(
@@ -36,17 +36,10 @@ async def get_leccion(
 	token_payload: Optional[dict] = Depends(get_current_user),
 ):
 	"""Obtener lección con su contenido completo."""
-	service = LeccionService(db)
+	from app.utils.validators import get_user_info
 	
-	usuario_id = None
-	admin = False
-	if token_payload:
-		from app.services.usuario_service import UsuarioService
-		usuario_service = UsuarioService(db)
-		usuario = await usuario_service.get_by_cognito_id(token_payload.get("sub"))
-		if usuario:
-			usuario_id = usuario.id
-		admin = is_admin(token_payload)
+	service = LeccionService(db)
+	usuario_id, admin = await get_user_info(db, token_payload)
 	
 	await service.validate_acceso_leccion(leccion_id, usuario_id, admin)
 	
@@ -79,17 +72,10 @@ async def get_contenido_leccion(
 	token_payload: Optional[dict] = Depends(get_current_user),
 ):
 	"""Obtener contenido de una lección."""
-	service = LeccionService(db)
+	from app.utils.validators import get_user_info
 	
-	usuario_id = None
-	admin = False
-	if token_payload:
-		from app.services.usuario_service import UsuarioService
-		usuario_service = UsuarioService(db)
-		usuario = await usuario_service.get_by_cognito_id(token_payload.get("sub"))
-		if usuario:
-			usuario_id = usuario.id
-		admin = is_admin(token_payload)
+	service = LeccionService(db)
+	usuario_id, admin = await get_user_info(db, token_payload)
 	
 	await service.validate_acceso_leccion(leccion_id, usuario_id, admin)
 	
@@ -143,19 +129,12 @@ async def get_quiz_by_leccion(
 ):
 	"""Obtener quiz de una lección."""
 	from app.services.quiz_service import QuizService
+	from app.utils.validators import get_user_info
 	
 	service = QuizService(db)
 	leccion_service = LeccionService(db)
 	
-	usuario_id = None
-	admin = False
-	if token_payload:
-		from app.services.usuario_service import UsuarioService
-		usuario_service = UsuarioService(db)
-		usuario = await usuario_service.get_by_cognito_id(token_payload.get("sub"))
-		if usuario:
-			usuario_id = usuario.id
-		admin = is_admin(token_payload)
+	usuario_id, admin = await get_user_info(db, token_payload)
 	
 	if not admin and usuario_id:
 		await leccion_service.validate_acceso_leccion(leccion_id, usuario_id, admin)
@@ -165,9 +144,10 @@ async def get_quiz_by_leccion(
 		from app.utils.exceptions import NotFoundError
 		raise NotFoundError("Quiz", f"para lección {leccion_id}")
 	
-	stmt = select(models.Pregunta).where(models.Pregunta.quiz_id == quiz.id)
+	from sqlalchemy import func
+	stmt = select(func.count(models.Pregunta.id)).where(models.Pregunta.quiz_id == quiz.id)
 	result = await db.execute(stmt)
-	preguntas = result.scalars().all()
+	numero_preguntas = result.scalar_one() or 0
 	
 	return QuizDetailResponse(
 		id=quiz.id,
@@ -178,6 +158,6 @@ async def get_quiz_by_leccion(
 		guarda_calificacion=quiz.guarda_calificacion,
 		creado_en=quiz.creado_en,
 		actualizado_en=quiz.actualizado_en,
-		numero_preguntas=len(preguntas),
+		numero_preguntas=numero_preguntas,
 	)
 

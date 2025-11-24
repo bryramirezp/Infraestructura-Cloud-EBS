@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import uuid
 from datetime import datetime
@@ -6,10 +6,10 @@ from app.database.enums import TipoContenido
 
 
 class LeccionBase(BaseModel):
-    modulo_id: uuid.UUID
-    titulo: str
-    orden: Optional[int] = None
-    publicado: Optional[bool] = False
+    modulo_id: uuid.UUID = Field(..., description="ID del módulo asociado")
+    titulo: str = Field(..., min_length=1, max_length=200, description="Título de la lección")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición de la lección en el módulo")
+    publicado: Optional[bool] = Field(False, description="Indica si la lección está publicada")
 
 
 class LeccionCreate(LeccionBase):
@@ -17,9 +17,9 @@ class LeccionCreate(LeccionBase):
 
 
 class LeccionUpdate(BaseModel):
-    titulo: Optional[str] = None
-    orden: Optional[int] = None
-    publicado: Optional[bool] = None
+    titulo: Optional[str] = Field(None, min_length=1, max_length=200, description="Título de la lección")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición de la lección en el módulo")
+    publicado: Optional[bool] = Field(None, description="Indica si la lección está publicada")
 
 
 class LeccionResponse(LeccionBase):
@@ -39,12 +39,12 @@ class LeccionDetailResponse(LeccionResponse):
 
 
 class LeccionContenidoBase(BaseModel):
-    leccion_id: uuid.UUID
-    tipo: TipoContenido
-    titulo: Optional[str] = None
-    descripcion: Optional[str] = None
-    url: Optional[str] = None
-    orden: Optional[int] = None
+    leccion_id: uuid.UUID = Field(..., description="ID de la lección asociada")
+    tipo: TipoContenido = Field(..., description="Tipo de contenido (TEXTO, VIDEO, IMAGEN, ARCHIVO)")
+    titulo: Optional[str] = Field(None, max_length=200, description="Título del contenido")
+    descripcion: Optional[str] = Field(None, max_length=5000, description="Descripción o texto del contenido")
+    url: Optional[str] = Field(None, max_length=500, description="URL del recurso (video, imagen, archivo)")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición del contenido en la lección")
 
 
 class LeccionContenidoCreate(LeccionContenidoBase):
@@ -52,11 +52,11 @@ class LeccionContenidoCreate(LeccionContenidoBase):
 
 
 class LeccionContenidoUpdate(BaseModel):
-    tipo: Optional[TipoContenido] = None
-    titulo: Optional[str] = None
-    descripcion: Optional[str] = None
-    url: Optional[str] = None
-    orden: Optional[int] = None
+    tipo: Optional[TipoContenido] = Field(None, description="Tipo de contenido (TEXTO, VIDEO, IMAGEN, ARCHIVO)")
+    titulo: Optional[str] = Field(None, max_length=200, description="Título del contenido")
+    descripcion: Optional[str] = Field(None, max_length=5000, description="Descripción o texto del contenido")
+    url: Optional[str] = Field(None, max_length=500, description="URL del recurso (video, imagen, archivo)")
+    orden: Optional[int] = Field(None, ge=0, description="Orden de aparición del contenido en la lección")
 
 
 class LeccionContenidoResponse(LeccionContenidoBase):

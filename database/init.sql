@@ -19,12 +19,11 @@ CREATE TYPE tipo_pregunta AS ENUM ('ABIERTA', 'OPCION_MULTIPLE', 'VERDADERO_FALS
 -- =====================================================
 
 CREATE TABLE usuario (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY,
   nombre VARCHAR(120) NOT NULL,
   apellido VARCHAR(120) NOT NULL,
   email VARCHAR(190) UNIQUE NOT NULL,
   avatar_url VARCHAR(500),
-  cognito_user_id VARCHAR(255) UNIQUE,
   creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -561,3 +560,10 @@ CREATE INDEX idx_leccion_titulo_gin ON leccion USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_quiz_titulo_gin ON quiz USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_examen_final_titulo_gin ON examen_final USING GIN (titulo gin_trgm_ops);
 CREATE INDEX idx_pregunta_enunciado_gin ON pregunta USING GIN (enunciado gin_trgm_ops);
+
+-- =====================================================
+-- Datos de prueba
+-- =====================================================
+
+INSERT INTO usuario (id, nombre, apellido, email) VALUES
+  ('84680478-6011-702a-463c-b2160fa3ac60', 'Usuario', 'Prueba', 'user@example.com');

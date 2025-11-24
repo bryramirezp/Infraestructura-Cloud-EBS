@@ -2,7 +2,7 @@ import logging
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -32,8 +32,20 @@ async def list_comentarios(
 	leccion_id: UUID,
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
+	skip: int = Query(0, ge=0, description="Número de registros a omitir"),
+	limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
 ):
-	"""Listar comentarios de una lección."""
+	"""
+	Listar comentarios de una lección específica.
+
+	- **Permisos**: Requiere autenticación.
+	- **Parámetros**:
+	  - `curso_id`: ID del curso.
+	  - `leccion_id`: ID de la lección.
+	  - `skip`: Número de comentarios a omitir para paginación.
+	  - `limit`: Número máximo de comentarios a retornar para paginación.
+	- **Respuesta**: Lista paginada de comentarios del foro.
+	"""
 	service = ForoService(db)
 	usuario_service = UsuarioService(db)
 	
@@ -41,7 +53,7 @@ async def list_comentarios(
 	if not usuario:
 		raise AuthorizationError("Usuario no encontrado")
 	
-	comentarios = await service.list_comentarios_by_leccion(curso_id, leccion_id)
+	comentarios = await service.list_comentarios_by_leccion(curso_id, leccion_id, skip=skip, limit=limit)
 	return [ForoComentarioResponse.from_orm(comentario) for comentario in comentarios]
 
 
@@ -57,7 +69,13 @@ async def create_comentario(
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
 ):
-	"""Crear un nuevo comentario en el foro."""
+	"""
+	Crear un nuevo comentario en el foro.
+	
+	- **Permisos**: Requiere autenticación
+	- **Parámetros**: `curso_id` - ID del curso, `leccion_id` - ID de la lección, contenido del comentario
+	- **Respuesta**: Comentario creado
+	"""
 	service = ForoService(db)
 	usuario_service = UsuarioService(db)
 	
@@ -90,7 +108,13 @@ async def update_comentario(
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
 ):
-	"""Actualizar un comentario propio."""
+	"""
+	Actualizar un comentario propio.
+	
+	- **Permisos**: Requiere autenticación. Solo el autor puede actualizar su comentario
+	- **Parámetros**: `comentario_id` - ID del comentario, nuevo contenido
+	- **Respuesta**: Comentario actualizado
+	"""
 	service = ForoService(db)
 	usuario_service = UsuarioService(db)
 	
@@ -116,7 +140,13 @@ async def delete_comentario(
 	db: AsyncSession = Depends(get_db),
 	token_payload: dict = Depends(get_current_user),
 ):
-	"""Eliminar un comentario propio."""
+	"""
+	Eliminar un comentario propio.
+	
+	- **Permisos**: Requiere autenticación. Solo el autor o un administrador puede eliminar
+	- **Parámetros**: `comentario_id` - ID del comentario
+	- **Respuesta**: No content (204)
+	"""
 	service = ForoService(db)
 	usuario_service = UsuarioService(db)
 	
