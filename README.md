@@ -1,6 +1,7 @@
 # EBS Online Platform
 
 Plataforma de educación en línea.
+
 ## Instalación
 
 ### Frontend
@@ -15,11 +16,16 @@ npm run dev
 
 ### Backend
 
-To deploy the backend Lambda functions, run the following from the root directory (where `serverless.yml` is located):
+Para ejecutar el backend y la base de datos con Docker Compose, ejecuta desde el directorio raíz:
 
 ```bash
-npm install
-npm run dev
+docker-compose up --build
+```
+
+Para ejecutar en segundo plano:
+
+```bash
+docker-compose up -d --build
 ```
 
 ## Troubleshooting
@@ -28,24 +34,25 @@ npm run dev
 git rm -r --cached node_modules
 git rm --cached package-lock.json
 
-## Herramientas de Desarrollo y Pruebas
-
-![Serverless Framework](https://img.shields.io/badge/Serverless%20Framework-FF4F8B?style=for-the-badge&logo=serverless&logoColor=white)
-
 ## Frontend
 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 
+## Backend
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)
+
 ## Base de Datos
 
-![MySQL](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 
 ## Backend y Servicios en la Nube (AWS)
 
-![AWS Lambda](https://img.shields.io/badge/AWS%20Lambda-FF9900?style=for-the-badge&logo=aws-lambda&logoColor=white) ![Amazon API Gateway](https://img.shields.io/badge/Amazon%20API%20Gateway-FF4F8B?style=for-the-badge&logo=amazon-api-gateway&logoColor=white) ![Amazon SNS](https://img.shields.io/badge/Amazon%20SNS-E55B91?style=for-the-badge&logo=amazon-sns&logoColor=white) ![Amazon S3](https://img.shields.io/badge/Amazon%20S3-569A31?style=for-the-badge&logo=amazon-s3&logoColor=white) ![Amazon RDS](https://img.shields.io/badge/Amazon%20RDS-527FFF?style=for-the-badge&logo=amazon-rds&logoColor=white) ![Amazon Cognito](https://img.shields.io/badge/Amazon%20Cognito-DD344C?style=for-the-badge&logo=amazon-cognito&logoColor=white) ![Amazon SES](https://img.shields.io/badge/Amazon%20SES-3E8D91?style=for-the-badge&logo=amazon-ses&logoColor=white) ![Amazon Route 53](https://img.shields.io/badge/Amazon%20Route%2053-8C4FFF?style=for-the-badge&logo=amazon-route-53&logoColor=white) ![AWS WAF](https://img.shields.io/badge/AWS%20WAF-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![AWS Amplify](https://img.shields.io/badge/AWS%20Amplify-FF9900?style=for-the-badge&logo=aws-amplify&logoColor=white) ![AWS Shield](https://img.shields.io/badge/AWS%20Shield-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white)
+![Amazon S3](https://img.shields.io/badge/Amazon%20S3-569A31?style=for-the-badge&logo=amazon-s3&logoColor=white) ![Amazon CloudFront](https://img.shields.io/badge/Amazon%20CloudFront-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![AWS App Runner](https://img.shields.io/badge/AWS%20App%20Runner-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![Amazon RDS](https://img.shields.io/badge/Amazon%20RDS-527FFF?style=for-the-badge&logo=amazon-rds&logoColor=white) ![Amazon Cognito](https://img.shields.io/badge/Amazon%20Cognito-DD344C?style=for-the-badge&logo=amazon-cognito&logoColor=white) ![Amazon SES](https://img.shields.io/badge/Amazon%20SES-3E8D91?style=for-the-badge&logo=amazon-ses&logoColor=white) ![Amazon Route 53](https://img.shields.io/badge/Amazon%20Route%2053-8C4FFF?style=for-the-badge&logo=amazon-route-53&logoColor=white) ![AWS WAF](https://img.shields.io/badge/AWS%20WAF-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![AWS Shield](https://img.shields.io/badge/AWS%20Shield-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white)
+
 ## Arquitectura Cloud en AWS
 
-La solución se basa íntegramente en servicios de AWS, siguiendo un enfoque de microservicios y serverless.
+La solución se basa íntegramente en servicios de AWS, siguiendo un enfoque de "Monolito Modular Asíncrono" optimizado para 100 usuarios activos, priorizando simplicidad de mantenimiento y bajo costo.
 
 ### Componentes Principales
 
@@ -53,34 +60,35 @@ La solución se basa íntegramente en servicios de AWS, siguiendo un enfoque de 
     *   **Amazon Route 53**: Sistema de DNS y punto de entrada.
     *   **AWS WAF**: Protege la aplicación contra ataques web comunes (SQLi, XSS).
     *   **AWS Shield Standard**: Protección contra ataques DDoS.
-    *   **AWS Amplify Hosting**: Despliegue y alojamiento continuo del frontend en React a través de una CDN global.
+    *   **Amazon S3 + CloudFront**: Almacenamiento del frontend React y entrega mediante CDN global para carga instantánea.
 
 *   **Backend y Lógica de Negocio**:
-    *   **Amazon API Gateway**: Punto de entrada centralizado y seguro para el backend (API RESTful).
-    *   **AWS Lambda**: Núcleo de la computación serverless. Cada función representa un microservicio con una responsabilidad única (gestionar usuarios, calificar exámenes, etc.).
-    *   **Amazon SNS**: Actúa como un bus de eventos (Pub/Sub) para desacoplar los microservicios y permitir la comunicación asíncrona.
+    *   **AWS App Runner**: Contenedor Docker que ejecuta FastAPI (Python) con escalado automático a cero y HTTPS integrado.
+    *   **FastAPI BackgroundTasks**: Gestiona tareas asíncronas en segundo plano (generación de certificados, envío de correos) sin necesidad de servicios adicionales.
 
 *   **Datos, Identidad y Soporte**:
-    *   **Amazon Cognito**: Gestiona la autenticación de usuarios, incluyendo soporte para MFA.
-    *   **Amazon RDS (MySQL)**: Base de datos relacional para almacenar datos estructurados como perfiles de alumnos, cursos y calificaciones.
+    *   **Amazon Cognito**: Gestiona la autenticación de usuarios, incluyendo soporte para MFA. Tokens almacenados en cookies HttpOnly para mayor seguridad.
+    *   **Amazon RDS (PostgreSQL)**: Base de datos relacional para almacenar datos estructurados como perfiles de alumnos, cursos y calificaciones.
     *   **Amazon S3**: Almacenamiento de objetos para materiales de estudio (PDFs, videos) y certificados digitales.
     *   **Amazon SES**: Servicio de envío de correos electrónicos transaccionales (notificaciones, recordatorios, etc.).
+
 ## Flujos de Interacción
 
 1.  **Acceso y Carga de la Aplicación**:
     *   El usuario accede a `cursos.escuelasalem.com`.
     *   Route 53 resuelve el DNS.
     *   AWS WAF inspecciona y filtra la solicitud.
-    *   AWS Amplify Hosting sirve la aplicación React al navegador.
+    *   CloudFront sirve la aplicación React desde S3 al navegador con distribución global.
 
 2.  **Autenticación Segura**:
     *   El usuario introduce sus credenciales.
     *   La aplicación se comunica con Amazon Cognito para validar al usuario y generar tokens de seguridad (JWT).
-    *   La librería de AWS Amplify gestiona automáticamente el ciclo de vida de los tokens.
+    *   El backend intercambia el código de autorización por tokens y los establece como cookies HttpOnly con flags de seguridad (SameSite, Secure).
+    *   Las cookies se envían automáticamente en cada petición subsecuente.
 
 3.  **Interacción con el Backend (Síncrona y Asíncrona)**:
-    *   **Síncrona**: Al enviar un examen, la app React realiza una llamada POST a API Gateway. API Gateway valida el token con Cognito y enruta la solicitud a la Lambda correspondiente. La Lambda procesa el examen, lo guarda en RDS y devuelve una respuesta inmediata.
-    *   **Asíncrona**: La Lambda de exámenes publica un evento en un tópico de SNS. Otras Lambdas suscritas (para generar certificados y enviar notificaciones por correo) se activan en segundo plano sin que el usuario tenga que esperar.
+    *   **Síncrona**: Al enviar un examen, la app React realiza una llamada POST directamente al backend en App Runner. El backend valida el token JWT desde las cookies, procesa el examen, calcula la calificación, guarda en RDS y devuelve una respuesta inmediata con el resultado.
+    *   **Asíncrona**: Si el estudiante aprueba (80%+), el backend responde inmediatamente y programa una tarea en segundo plano usando FastAPI BackgroundTasks. Esta tarea genera el certificado PDF, lo sube a S3 y envía notificaciones por correo mediante SES, todo sin bloquear la respuesta al usuario.
 
 ## Plan de Desarrollo - Sprints
 
