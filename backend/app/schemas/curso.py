@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 import uuid
 from datetime import datetime
@@ -9,8 +9,8 @@ from app.schemas.guia_estudio import GuiaEstudioResponse
 
 
 class CursoBase(BaseModel):
-    titulo: str
-    descripcion: Optional[str] = None
+    titulo: str = Field(..., min_length=1, max_length=200, description="Título del curso")
+    descripcion: Optional[str] = Field(None, max_length=5000, description="Descripción del curso")
     publicado: Optional[bool] = False
 
 
@@ -19,8 +19,8 @@ class CursoCreate(CursoBase):
 
 
 class CursoUpdate(BaseModel):
-    titulo: Optional[str] = None
-    descripcion: Optional[str] = None
+    titulo: Optional[str] = Field(None, min_length=1, max_length=200, description="Título del curso")
+    descripcion: Optional[str] = Field(None, max_length=5000, description="Descripción del curso")
     publicado: Optional[bool] = None
 
 
@@ -30,7 +30,7 @@ class CursoResponse(CursoBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CursoDetailResponse(CursoResponse):
@@ -38,7 +38,4 @@ class CursoDetailResponse(CursoResponse):
     guias_estudio: List[GuiaEstudioResponse] = []
 
     class Config:
-        orm_mode = True
-
-
-CursoDetailResponse.update_forward_refs()
+        from_attributes = True

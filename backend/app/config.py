@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     cookie_access_max_age: int = 300  # seconds (5 minutes)
     cookie_refresh_max_age: int = 1209600  # seconds (14 days)
 
+    # Email
+    from_email: Optional[str] = None
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string"""
@@ -145,19 +148,23 @@ class Settings(BaseSettings):
     def cognito_base_url(self) -> str:
         """Return the Cognito hosted UI base URL.
 
-        Priority:
-        - If `cognito_domain` is provided, use it as the host (can be custom domain)
-        - Otherwise construct the hosted domain pattern using the user pool id
+        Requires `cognito_domain` to be explicitly configured in environment variables.
+        This prevents security issues from auto-constructing URLs.
         """
-        if self.cognito_domain:
-            domain = self.cognito_domain
-            if domain.startswith("https://"):
-                return domain.rstrip("/")
-            return f"https://{domain.rstrip('/') }"
-
-        # Default hosted UI domain format: <your-domain>.auth.<region>.amazoncognito.com
-        # Many setups map a custom domain; when not provided we attempt a sensible default
-        return f"https://{self.cognito_user_pool_id}.auth.{self.aws_region}.amazoncognito.com"
+        if not self.cognito_domain:
+            error_msg = (
+                "COGNITO_DOMAIN is not configured in environment variables. "
+                "Please set COGNITO_DOMAIN in your .env file with the exact Cognito Hosted UI domain "
+                "provided by AWS (e.g., https://us-east-1mjw0ejoju.auth.us-east-1.amazoncognito.com). "
+                "Auto-constructing the domain from user pool ID is disabled for security reasons."
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        domain = self.cognito_domain
+        if domain.startswith("https://"):
+            return domain.rstrip("/")
+        return f"https://{domain.rstrip('/')}"
 
     @property
     def cognito_authorize_url(self) -> str:

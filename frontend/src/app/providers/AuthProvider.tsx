@@ -1,8 +1,18 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useAuth as useAuthLogic } from '../../shared/hooks/use-auth';
+import type { AppRole } from '../../shared/auth/cognito-roles';
+
+interface User {
+  user_id: string;
+  email: string;
+  name: string;
+  role: AppRole;
+  groups: string[];
+  exp: number;
+}
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string, redirectPath?: string) => Promise<void>;

@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { cn } from '@/shared/lib/utils';
 import type { CourseFormData, CourseLevel, CourseStatus } from '@/entities/course';
 import type { Module } from '@/entities/module';

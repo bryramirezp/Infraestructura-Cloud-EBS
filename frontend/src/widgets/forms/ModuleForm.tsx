@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import type { ModuleFormData, ModuleLevel, ModuleStatus } from '@/entities/module';

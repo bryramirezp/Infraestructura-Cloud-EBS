@@ -18,24 +18,27 @@ class ModuloService:
 	def __init__(self, db: AsyncSession):
 		self.db = db
 
-	async def list_modulos(self, *, publicado: Optional[bool] = None) -> List[models.Modulo]:
+	async def list_modulos(
+		self,
+		*,
+		publicado: Optional[bool] = None,
+		skip: int = 0,
+		limit: int = 100,
+	) -> List[models.Modulo]:
 		stmt = select(models.Modulo)
 		if publicado is not None:
 			stmt = stmt.where(models.Modulo.publicado == publicado)
 
-		stmt = stmt.order_by(models.Modulo.fecha_inicio.asc(), models.Modulo.titulo.asc())
+		stmt = stmt.order_by(models.Modulo.fecha_inicio.asc(), models.Modulo.titulo.asc()).offset(skip).limit(limit)
 		result = await self.db.execute(stmt)
 		modulos = result.scalars().all()
 		logger.debug("Modulos recuperados: %s", len(modulos))
 		return modulos
 
 	async def get_modulo(self, modulo_id: uuid.UUID) -> models.Modulo:
-		stmt = select(models.Modulo).where(models.Modulo.id == modulo_id)
-		result = await self.db.execute(stmt)
-		modulo = result.scalar_one_or_none()
-		if not modulo:
-			raise NotFoundError("Modulo", str(modulo_id))
-		return modulo
+		"""Obtener módulo por ID."""
+		from app.utils.query_helpers import get_or_404
+		return await get_or_404(self.db, models.Modulo, modulo_id, "Módulo")
 
 	async def get_modulo_with_cursos(self, modulo_id: uuid.UUID) -> models.Modulo:
 		stmt = (

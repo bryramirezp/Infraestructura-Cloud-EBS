@@ -3,7 +3,10 @@ from sqlalchemy.orm import DeclarativeBase
 from typing import AsyncGenerator
 import logging
 import os
+from fastapi import Request
+import jwt
 from app.config import settings
+from app.database.rls import set_current_cognito_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -103,9 +106,10 @@ engine = _LazyEngine()
 SessionLocal = _LazySessionLocal()
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db(request: Request = None) -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency function to get async database session.
+    Sets RLS context if Authorization header is present.
     
     Usage:
         @router.get("/items")
@@ -115,6 +119,21 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     async with _get_session_local()() as db:
         try:
+            # RLS Integration
+            if request:
+                auth_header = request.headers.get("Authorization")
+                if auth_header and auth_header.startswith("Bearer "):
+                    token = auth_header.split(" ")[1]
+                    try:
+                        # Decode without verification just to get sub for RLS
+                        # Verification happens in auth dependency
+                        payload = jwt.decode(token, options={"verify_signature": False})
+                        user_id = payload.get("sub")
+                        if user_id:
+                            await set_current_cognito_user_id(db, user_id)
+                    except Exception as e:
+                        logger.warning(f"Error setting RLS context: {e}")
+
             yield db
         except Exception as e:
             logger.error(f"Database session error: {e}")

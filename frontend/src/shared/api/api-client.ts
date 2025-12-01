@@ -1,6 +1,16 @@
 import { API_ENDPOINTS } from './endpoints';
 
-const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api';
+// Get API URL from environment, default to port 8000 (FastAPI default)
+const API_URL = (import.meta as any).env.VITE_API_URL || '';
+
+// Log API URL in development for debugging
+if ((import.meta as any).env.DEV) {
+  console.log('[API Client] Using API URL:', API_URL);
+}
+// Remove /api suffix for auth endpoints (they're under /auth, not /api/auth)
+const BASE_URL = API_URL.endsWith('/api') 
+  ? API_URL.slice(0, -4) // Remove '/api'
+  : API_URL.replace(/\/api$/, ''); // Fallback: remove trailing /api
 
 /**
  * API Client Service
@@ -18,9 +28,16 @@ class APIClient {
    */
   private async request(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    useBaseUrl: boolean = false
   ): Promise<Response> {
-    const url = `${API_URL}${endpoint}`;
+    const baseUrl = useBaseUrl ? BASE_URL : API_URL;
+    const url = `${baseUrl}${endpoint}`;
+
+    // Log URL in development for debugging
+    if ((import.meta as any).env.DEV) {
+      console.log(`[API Client] ${options.method || 'GET'} ${url}`);
+    }
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -31,34 +48,71 @@ class APIClient {
     // Importante: No enviar Authorization header
     // El backend maneja autenticación via cookies HTTP seguras
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include', // Incluir cookies en todas las peticiones
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include', // Incluir cookies en todas las peticiones
+      });
 
-    if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
-      } catch {
-        // Si la respuesta no es JSON, usar el texto
-        const errorText = await response.text();
-        if (errorText) {
-          errorMessage = errorText;
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
+        } catch {
+          // Si la respuesta no es JSON, usar el texto
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
         }
+        
+        // Para 401/403 en endpoints de autenticación, incluir el status en el mensaje
+        // para que use-auth.ts pueda detectarlo como error esperado
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = `${response.status} ${errorMessage}`;
+        }
+        
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    return response;
+      return response;
+    } catch (error: any) {
+      // Mejorar mensaje de error para "Failed to fetch"
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        const isAuthEndpoint = endpoint.includes('/auth/');
+        const isHealthEndpoint = endpoint.includes('/health');
+        
+        // Para health check, solo loggear en modo desarrollo y no como error crítico
+        if (isHealthEndpoint) {
+          // No loggear como error, solo como información en desarrollo
+          // En Vite, import.meta.env.MODE === 'development' para desarrollo
+          const isDev = (import.meta as any).env?.MODE === 'development' || (import.meta as any).env?.DEV;
+          if (isDev) {
+            console.info(`[API Client] Backend no disponible en ${baseUrl}${endpoint}`);
+          }
+          throw new Error('Backend unavailable');
+        }
+        
+        // Para endpoints de auth, lanzar error silencioso (será manejado por checkAuth)
+        if (isAuthEndpoint) {
+          throw new Error('Connection failed');
+        }
+        
+        // Para otros endpoints, mostrar error completo
+        const errorMsg = `No se pudo conectar con el servidor. Verifica que el backend esté corriendo en ${baseUrl}`;
+        console.error(`[API Client] Error de conexión a ${url}:`, error);
+        throw new Error(errorMsg);
+      }
+      throw error;
+    }
   }
 
   /**
    * Realiza una petición GET
    */
-  async get(endpoint: string, queryParams?: Record<string, any>) {
+  async get(endpoint: string, queryParams?: Record<string, any>, useBaseUrl: boolean = false) {
     let fullEndpoint = endpoint;
     if (queryParams) {
       const params = new URLSearchParams();
@@ -73,9 +127,13 @@ class APIClient {
       }
     }
 
-    const response = await this.request(fullEndpoint, {
-      method: 'GET',
-    });
+    const response = await this.request(
+      fullEndpoint,
+      {
+        method: 'GET',
+      },
+      useBaseUrl
+    );
 
     return response.json();
   }
@@ -83,11 +141,15 @@ class APIClient {
   /**
    * Realiza una petición POST
    */
-  async post(endpoint: string, data?: any) {
-    const response = await this.request(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  async post(endpoint: string, data?: any, useBaseUrl: boolean = false) {
+    const response = await this.request(
+      endpoint,
+      {
+        method: 'POST',
+        body: data ? JSON.stringify(data) : undefined,
+      },
+      useBaseUrl
+    );
 
     return response.json();
   }
@@ -124,15 +186,35 @@ class APIClient {
 
   // Authentication (Cognito Hosted UI)
   async getAuthProfile() {
-    return this.get(API_ENDPOINTS.AUTH.PROFILE);
+    // Usar /api/usuarios/me en lugar de /auth/profile (eliminado)
+    // Este endpoint puede retornar 401 si no hay cookies de autenticación (esperado)
+    try {
+      return await this.get(API_ENDPOINTS.USUARIOS.ME);
+    } catch (error: any) {
+      // Si es 401, es esperado cuando el usuario no está autenticado
+      // Re-lanzar el error para que use-auth.ts lo maneje
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        throw error; // Re-lanzar para que use-auth.ts lo maneje como error esperado
+      }
+      throw error;
+    }
   }
 
   async getAuthTokens() {
-    return this.get(API_ENDPOINTS.AUTH.TOKENS);
+    return this.get(API_ENDPOINTS.AUTH.TOKENS, undefined, true);
   }
 
   async refreshAuthTokens() {
-    return this.post(API_ENDPOINTS.AUTH.REFRESH);
+    return this.post(API_ENDPOINTS.AUTH.REFRESH, undefined, true);
+  }
+
+  async setAuthTokens(accessToken: string, refreshToken: string, idToken: string) {
+    // Auth endpoints are under /auth, not /api/auth
+    return this.post(API_ENDPOINTS.AUTH.SET_TOKENS, {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      id_token: idToken,
+    }, true);
   }
 
   async setAuthTokens(accessToken: string, refreshToken: string, idToken: string) {
@@ -255,12 +337,12 @@ class APIClient {
     return this.get(API_ENDPOINTS.QUIZZES.PREGUNTAS(quizId));
   }
 
-  async iniciarQuiz(quizId: string) {
-    return this.post(API_ENDPOINTS.QUIZZES.INICIAR(quizId));
+  async crearIntentoQuiz(quizId: string) {
+    return this.post(API_ENDPOINTS.QUIZZES.INTENTOS(quizId));
   }
 
-  async enviarQuiz(quizId: string, respuestas: any) {
-    return this.post(API_ENDPOINTS.QUIZZES.ENVIAR(quizId), { respuestas });
+  async enviarIntentoQuiz(quizId: string, intentoId: string, respuestas: any) {
+    return this.put(API_ENDPOINTS.QUIZZES.INTENTO_BY_ID(quizId, intentoId), { respuestas });
   }
 
   async getQuizResultados(quizId: string) {
@@ -280,12 +362,12 @@ class APIClient {
     return this.get(API_ENDPOINTS.EXAMENES_FINALES.PREGUNTAS(examenId));
   }
 
-  async iniciarExamenFinal(examenId: string) {
-    return this.post(API_ENDPOINTS.EXAMENES_FINALES.INICIAR(examenId));
+  async crearIntentoExamenFinal(examenId: string) {
+    return this.post(API_ENDPOINTS.EXAMENES_FINALES.INTENTOS(examenId));
   }
 
-  async enviarExamenFinal(examenId: string, respuestas: any) {
-    return this.post(API_ENDPOINTS.EXAMENES_FINALES.ENVIAR(examenId), { respuestas });
+  async enviarIntentoExamenFinal(examenId: string, intentoId: string, respuestas: any) {
+    return this.put(API_ENDPOINTS.EXAMENES_FINALES.INTENTO_BY_ID(examenId, intentoId), { respuestas });
   }
 
   async getExamenFinalResultados(examenId: string) {
@@ -334,6 +416,18 @@ class APIClient {
     return this.put(API_ENDPOINTS.INSCRIPCIONES.ACTUALIZAR_ESTADO(inscripcionId), { estado });
   }
 
+  async patchInscripcion(inscripcionId: string, estado: string) {
+    // Usar PATCH en lugar de PUT para actualizar estado
+    const response = await this.request(
+      API_ENDPOINTS.INSCRIPCIONES.ACTUALIZAR_ESTADO(inscripcionId),
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ estado }),
+      }
+    );
+    return response.json();
+  }
+
   async getCertificadoByInscripcion(inscripcionId: string) {
     return this.get(API_ENDPOINTS.INSCRIPCIONES.CERTIFICADO(inscripcionId));
   }
@@ -347,16 +441,16 @@ class APIClient {
     return this.get(API_ENDPOINTS.CERTIFICADOS.BY_USUARIO(usuarioId));
   }
 
-  async descargarCertificado(certificadoId: string) {
-    return this.get(API_ENDPOINTS.CERTIFICADOS.DESCARGAR(certificadoId));
+  async obtenerCertificado(certificadoId: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.BY_ID(certificadoId));
   }
 
-  async verificarCertificado(hash: string) {
-    return this.get(API_ENDPOINTS.CERTIFICADOS.VERIFICAR(hash));
+  async verificarCertificado(certificadoId: string, hash: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.VERIFICAR(certificadoId, hash));
   }
 
-  async generarCertificado(inscripcionId: string) {
-    return this.post(API_ENDPOINTS.CERTIFICADOS.GENERAR(inscripcionId));
+  async crearCertificado(inscripcionId: string) {
+    return this.post(API_ENDPOINTS.CERTIFICADOS.BASE, { inscripcion_curso_id: inscripcionId });
   }
 
   // Usuarios API
@@ -369,7 +463,7 @@ class APIClient {
   }
 
   async getUsuarioPerfil() {
-    return this.get(API_ENDPOINTS.USUARIOS.PERFIL);
+    return this.get(API_ENDPOINTS.USUARIOS.ME);
   }
 
   async actualizarUsuarioPerfil(perfilData: any) {
@@ -441,7 +535,8 @@ class APIClient {
 
   // Sistema API
   async healthCheck() {
-    return this.get(API_ENDPOINTS.SISTEMA.HEALTH);
+    // Health check está en /health, no en /api/health
+    return this.get(API_ENDPOINTS.SISTEMA.HEALTH, undefined, true);
   }
 
   async getVersion() {

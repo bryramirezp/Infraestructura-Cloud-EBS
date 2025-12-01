@@ -1,15 +1,14 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 import uuid
 from datetime import datetime
 
 
 class UsuarioBase(BaseModel):
-    nombre: str
-    apellido: str
-    email: EmailStr
-    avatar_url: Optional[str] = None
-    cognito_user_id: Optional[str] = None
+    nombre: str = Field(..., min_length=1, max_length=100, description="Nombre del usuario")
+    apellido: str = Field(..., min_length=1, max_length=100, description="Apellido del usuario")
+    email: EmailStr = Field(..., description="Email del usuario")
+    avatar_url: Optional[str] = Field(None, max_length=500, description="URL del avatar")
 
 
 class UsuarioCreate(UsuarioBase):
@@ -18,9 +17,9 @@ class UsuarioCreate(UsuarioBase):
 
 
 class UsuarioUpdate(BaseModel):
-    nombre: Optional[str] = None
-    apellido: Optional[str] = None
-    avatar_url: Optional[str] = None
+    nombre: Optional[str] = Field(None, min_length=1, max_length=100, description="Nombre del usuario")
+    apellido: Optional[str] = Field(None, min_length=1, max_length=100, description="Apellido del usuario")
+    avatar_url: Optional[str] = Field(None, max_length=500, description="URL del avatar")
 
 
 class UsuarioResponse(UsuarioBase):
@@ -29,4 +28,4 @@ class UsuarioResponse(UsuarioBase):
     actualizado_en: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -1,13 +1,29 @@
 ﻿// Pages exports
 export { LandingPage as HomePage } from './public/HomePage';
 export { AboutPage } from './public/AboutPage';
+<<<<<<< HEAD
 export { LoginPage } from './auth/LoginPage';
 export { AdminLoginPage } from './auth/AdminLoginPage';
+=======
+// Auth pages removed - using Cognito Hosted UI
+export { VerifyCertificatePage } from './public/VerifyCertificatePage';
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
 export { default as StudentDashboard } from './student/StudentDashboard';
 export { default as CoursesPage } from './student/Courses';
 export { default as CalendarPage } from './student/Calendar';
 export { default as AssignmentsPage } from './student/AssignmentsPage';
 export { default as GradesPage } from './student/Grades';
+export { ModulosPage } from './student/ModulosPage';
+export { ModuloDetailPage } from './student/ModuloDetailPage';
+export { CursoDetailPage } from './student/CursoDetailPage';
+export { LessonPage } from './student/LessonPage';
+export { QuizPage } from './student/QuizPage';
+export { QuizResultPage } from './student/QuizResultPage';
+export { ExamenFinalPage } from './student/ExamenFinalPage';
+export { MyCoursesPage } from './student/MyCoursesPage';
+export { ProgressPage } from './student/ProgressPage';
+export { CertificatesPage } from './student/CertificatesPage';
+export { ForumPage } from './student/ForumPage';
 export { AdminDashboard } from './admin/AdminDashboard';
 export { AdminUsersPage } from './admin/AdminUsersPage';
 export { AdminCoursesPage } from './admin/AdminCoursesPage';

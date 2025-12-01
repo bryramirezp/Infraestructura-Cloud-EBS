@@ -9,32 +9,31 @@
 -- =====================================================
 -- Función Helper: Obtener usuario_id desde Cognito
 -- =====================================================
--- Esta función obtiene el usuario_id desde el cognito_user_id
--- que se pasa como parámetro. En producción, esto se podría
--- integrar con el JWT token de Cognito.
+-- Esta función obtiene el usuario_id directamente del sub de Cognito.
+-- El id de la tabla usuario ahora ES el sub de Cognito, por lo que
+-- no necesitamos hacer una búsqueda adicional en la tabla.
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION get_current_user_id()
 RETURNS UUID AS $$
 DECLARE
-  current_cognito_user_id TEXT;
+  current_sub TEXT;
   user_id UUID;
 BEGIN
-  -- En producción, esto obtendría el cognito_user_id del JWT token
+  -- En producción, esto obtendría el sub del JWT token de Cognito
   -- Por ahora, usamos una variable de sesión o parámetro
-  -- Ejemplo: current_cognito_user_id := current_setting('app.current_user_id', true);
+  -- Ejemplo: current_sub := current_setting('app.current_user_id', true);
   
   -- Para desarrollo/testing, se puede pasar como parámetro
   -- En producción, se obtendría del contexto de autenticación
-  current_cognito_user_id := current_setting('app.current_cognito_user_id', true);
+  current_sub := current_setting('app.current_cognito_user_id', true);
   
-  IF current_cognito_user_id IS NULL THEN
+  IF current_sub IS NULL THEN
     RETURN NULL;
   END IF;
   
-  SELECT id INTO user_id
-  FROM usuario
-  WHERE cognito_user_id = current_cognito_user_id;
+  -- El id ahora ES el sub de Cognito, así que lo convertimos directamente
+  user_id := current_sub::UUID;
   
   RETURN user_id;
 END;

@@ -45,36 +45,36 @@ export const useCertificadoByInscripcion = (inscripcionId: string | null | undef
 };
 
 /**
- * Hook para descargar un certificado (obtiene URL prefirmada de S3)
+ * Hook para obtener un certificado (incluye URL de descarga si está disponible)
  */
-export const useDescargarCertificado = () => {
+export const useObtenerCertificado = () => {
   return useMutation({
     mutationFn: (certificadoId: string) =>
-      apiClient.descargarCertificado(certificadoId),
+      apiClient.obtenerCertificado(certificadoId),
   });
 };
 
 /**
  * Hook para verificar un certificado por hash (público)
  */
-export const useVerificarCertificado = (hash: string | null | undefined) => {
+export const useVerificarCertificado = (certificadoId: string | null | undefined, hash: string | null | undefined) => {
   return useQuery<Certificado>({
-    queryKey: ['certificado', 'verificar', hash],
-    queryFn: () => apiClient.verificarCertificado(hash!),
-    enabled: !!hash,
+    queryKey: ['certificado', 'verificar', certificadoId, hash],
+    queryFn: () => apiClient.verificarCertificado(certificadoId!, hash!),
+    enabled: !!certificadoId && !!hash,
     staleTime: 10 * 60 * 1000,
   });
 };
 
 /**
- * Hook para generar un certificado (Admin/Backend automático)
+ * Hook para crear/generar un certificado (inicia generación asíncrona)
  */
-export const useGenerarCertificado = () => {
+export const useCrearCertificado = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (inscripcionId: string) =>
-      apiClient.generarCertificado(inscripcionId),
+      apiClient.crearCertificado(inscripcionId),
     onSuccess: (_, inscripcionId) => {
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: ['certificados'] });

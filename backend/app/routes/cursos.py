@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.session import get_db
 from app.schemas.curso import CursoCreate, CursoDetailResponse, CursoResponse, CursoUpdate
 from app.schemas.guia_estudio import GuiaEstudioResponse
+from app.schemas.modulo import ModuloResponse
 from app.services.curso_service import CursoService
-from app.services.s3_service import S3Service
+from app.schemas.examen_final import ExamenFinalDetailResponse
 from app.utils.roles import UserRole, require_role
 
 logger = logging.getLogger(__name__)
@@ -22,10 +23,22 @@ async def list_cursos(
 	db: AsyncSession = Depends(get_db),
 	publicado: Optional[bool] = Query(None, description="Filtrar por estado publicado"),
 	modulo_id: Optional[UUID] = Query(None, description="Filtrar por módulo"),
+	skip: int = Query(0, ge=0, description="Número de registros a omitir"),
+	limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros a retornar"),
 ):
-	"""Listar cursos (materias) disponibles, con filtros opcionales."""
+	"""
+	Listar cursos (materias) disponibles, con filtros opcionales.
+
+	- **Permisos**: Abierto para todos los usuarios.
+	- **Parámetros**:
+	  - `publicado`: Filtra cursos por estado de publicación.
+	  - `modulo_id`: Filtra cursos por módulo.
+	  - `skip`: Número de cursos a omitir para paginación.
+	  - `limit`: Número máximo de cursos a retornar para paginación.
+	- **Respuesta**: Lista paginada de cursos.
+	"""
 	service = CursoService(db)
-	cursos = await service.list_cursos(publicado=publicado, modulo_id=modulo_id)
+	cursos = await service.list_cursos(publicado=publicado, modulo_id=modulo_id, skip=skip, limit=limit)
 	return cursos
 
 
@@ -62,31 +75,37 @@ async def get_guias_estudio(
 ):
 	"""Obtener guías de estudio de un curso, con URLs prefirmadas si están en S3."""
 	service = CursoService(db)
-	s3_service = S3Service()
 	
-	guias = await service.list_guias_estudio(curso_id, activo=activo)
-	
-	guias_response = []
-	for guia in guias:
-		guia_data = GuiaEstudioResponse.from_orm(guia).dict()
-		
-		if guia.url:
-			s3_key = None
-			if guia.url.startswith("s3://"):
-				s3_key = guia.url.replace("s3://", "").split("/", 1)[-1] if "/" in guia.url.replace("s3://", "") else guia.url.replace("s3://", "")
-			elif not guia.url.startswith("http"):
-				s3_key = guia.url
-			
-			if s3_key:
-				try:
-					presigned_url = s3_service.generate_presigned_url(s3_key, expiration=3600)
-					guia_data["url"] = presigned_url
-				except Exception as e:
-					logger.warning(f"Error generando URL prefirmada para guía {guia.id}: {e}")
-		
-		guias_response.append(GuiaEstudioResponse(**guia_data))
+	guias_response = await service.get_guias_estudio_con_urls(curso_id, activo=activo)
 	
 	return guias_response
+
+
+@router.get("/{curso_id}/examen-final", response_model=ExamenFinalDetailResponse, status_code=status.HTTP_200_OK)
+async def get_examen_final_curso(
+	curso_id: UUID,
+	db: AsyncSession = Depends(get_db),
+):
+	"""Obtener examen final de un curso."""
+	service = CursoService(db)
+	return await service.get_examen_final_con_conteo(curso_id)
+
+
+@router.get("/{curso_id}/modulos", response_model=List[ModuloResponse], status_code=status.HTTP_200_OK)
+async def list_modulos_by_curso(
+	curso_id: UUID,
+	db: AsyncSession = Depends(get_db),
+):
+	"""
+	Listar módulos asociados a un curso.
+	
+	- **Permisos**: Endpoint público (no requiere autenticación)
+	- **Parámetros**: `curso_id` - ID del curso
+	- **Respuesta**: Lista de módulos asociados al curso, ordenados por slot
+	"""
+	service = CursoService(db)
+	modulos = await service.list_modulos_by_curso(curso_id)
+	return [ModuloResponse.from_orm(modulo) for modulo in modulos]
 
 
 @router.post("", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)

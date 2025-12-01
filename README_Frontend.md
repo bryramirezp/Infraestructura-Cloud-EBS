@@ -25,7 +25,7 @@
 - **Validación**: Zod 3.23.8
 - **Formularios**: React Hook Form 7.53.0
 - **UI**: Radix UI primitives
-- **Notificaciones**: Sonner 1.7.4
+- **Notificaciones**: Sooner
 - **Mocking**: MSW (opcional)
 
 ### Principios de Desarrollo

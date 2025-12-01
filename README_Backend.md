@@ -247,72 +247,89 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 
 ### ✅ Fase 3: Schemas Pydantic (Contrato API)
 
-**Estado**: Pendiente
+**Estado**: Completado
 
 **Objetivos**:
 - Crear schemas Pydantic basados en modelos SQLAlchemy
 - Definir request/response models para todos los endpoints
 - Validaciones de negocio en schemas
 
-**Tareas**:
-1. Crear `backend/app/schemas/usuario.py`
-   - `UsuarioBase`, `UsuarioCreate`, `Usuario`, `UsuarioResponse`
+**Tareas completadas**:
 
-2. Crear `backend/app/schemas/curso.py`
-   - `CursoBase`, `CursoCreate`, `Curso`, `CursoResponse`
+1. ✅ `backend/app/schemas/usuario.py` - Completado
+   - `UsuarioBase`, `UsuarioCreate`, `UsuarioUpdate`, `UsuarioResponse`
+
+2. ✅ `backend/app/schemas/curso.py` - Completado
+   - `CursoBase`, `CursoCreate`, `CursoUpdate`, `CursoResponse`, `CursoDetailResponse`
    - `GuiaEstudioResponse` (con URL prefirmada)
 
-3. Crear `backend/app/schemas/modulo.py`
-   - `ModuloBase`, `ModuloCreate`, `Modulo`, `ModuloResponse`
-   - `ModuloConCursos` (con lista de cursos)
+3. ✅ `backend/app/schemas/modulo.py` - Completado
+   - `ModuloBase`, `ModuloCreate`, `ModuloUpdate`, `ModuloResponse`, `ModuloDetailResponse`
+   - `ModuloCursoItem` (con lista de cursos)
 
-4. Crear `backend/app/schemas/leccion.py`
-   - `LeccionBase`, `LeccionCreate`, `Leccion`, `LeccionResponse`
-   - `LeccionContenido`, `LeccionConContenido`
+4. ✅ `backend/app/schemas/leccion.py` - Completado
+   - `LeccionBase`, `LeccionResponse`
+   - `LeccionContenidoBase`, `LeccionContenidoResponse`
 
-5. Crear `backend/app/schemas/quiz.py`
-   - `QuizBase`, `QuizCreate`, `Quiz`, `QuizResponse`
-   - `PreguntaBase`, `PreguntaCreate`, `Pregunta`, `PreguntaResponse`
-   - `OpcionBase`, `OpcionCreate`, `Opcion`, `OpcionResponse`
-   - `PreguntaConOpciones` (pregunta con sus opciones)
+5. ✅ `backend/app/schemas/quiz.py` - Completado
+   - `QuizBase`, `QuizCreate`, `QuizUpdate`, `QuizResponse`, `QuizDetailResponse`
+   - `PreguntaBase`, `PreguntaCreate`, `PreguntaUpdate`, `PreguntaResponse`
+   - `PreguntaConfigBase`, `PreguntaConfigCreate`, `PreguntaConfigUpdate`, `PreguntaConfigResponse`
+   - `OpcionBase`, `OpcionCreate`, `OpcionUpdate`, `OpcionResponse`
+   - `PreguntaConOpciones` (pregunta con sus opciones y configuración)
+   - `QuizConPreguntas` (quiz con todas sus preguntas)
 
-6. Crear `backend/app/schemas/examen_final.py`
-   - `ExamenFinalBase`, `ExamenFinalCreate`, `ExamenFinal`, `ExamenFinalResponse`
+6. ✅ `backend/app/schemas/examen_final.py` - Completado
+   - `ExamenFinalBase`, `ExamenFinalCreate`, `ExamenFinalUpdate`, `ExamenFinalResponse`
+   - `ExamenFinalDetailResponse` (con número de preguntas)
+   - `ExamenFinalConPreguntas` (examen con todas sus preguntas)
 
-7. Crear `backend/app/schemas/inscripcion.py`
-   - `InscripcionCursoBase`, `InscripcionCursoCreate`, `InscripcionCurso`, `InscripcionCursoResponse`
-   - `EstadoInscripcion` enum
+7. ✅ `backend/app/schemas/inscripcion.py` - Completado
+   - `InscripcionBase`, `InscripcionResponse`
+   - `EstadoInscripcion` enum (en `database/enums.py`)
 
-8. Crear `backend/app/schemas/intento.py`
-   - `IntentoBase`, `IntentoCreate`, `Intento`, `IntentoResponse`
-   - `IntentoPregunta`, `RespuestaBase`, `RespuestaCreate`, `Respuesta`
-   - `IntentoSubmission` (para enviar respuestas)
-   - `IntentoResult` (resultado del intento)
+8. ✅ `backend/app/schemas/intento.py` - Completado
+   - `IntentoBase`, `IntentoResponse`
+   - `IntentoPreguntaBase`, `RespuestaBase`
 
-9. Crear `backend/app/schemas/certificado.py`
-   - `CertificadoBase`, `Certificado`, `CertificadoResponse`
-   - `CertificadoDownload` (con URL prefirmada)
+9. ✅ `backend/app/schemas/certificado.py` - Completado
+   - `CertificadoBase`, `CertificadoResponse`
 
-10. Crear `backend/app/schemas/progress.py`
-    - `ProgressResponse` (progreso en curso)
-    - `ProgressComparison` (comparación con otros estudiantes)
+10. ✅ `backend/app/schemas/progress.py` - Completado
+    - `ProgressResponse` (progreso en curso específico)
+    - `ProgressModuloResponse` (progreso en módulo completo)
+    - `ProgressGeneralResponse` (resumen general del usuario)
+    - `ProgressComparisonItem` (item individual en comparación)
+    - `ProgressComparisonResponse` (comparación con otros estudiantes)
 
-11. Crear `backend/app/schemas/foro.py`
-    - `ForoComentarioBase`, `ForoComentarioCreate`, `ForoComentario`, `ForoComentarioResponse`
+11. ✅ `backend/app/schemas/foro.py` - Completado
+    - `ForoComentarioBase`, `ForoComentarioResponse`
 
-**Archivos a crear**:
-- `backend/app/schemas/__init__.py`
-- `backend/app/schemas/usuario.py`
-- `backend/app/schemas/curso.py`
-- `backend/app/schemas/modulo.py`
-- `backend/app/schemas/leccion.py`
-- `backend/app/schemas/quiz.py`
-- `backend/app/schemas/examen_final.py`
-- `backend/app/schemas/inscripcion.py`
-- `backend/app/schemas/intento.py`
-- `backend/app/schemas/certificado.py`
-- `backend/app/schemas/progress.py`
-- `backend/app/schemas/foro.py`
+**Archivos creados**:
+- ✅ `backend/app/schemas/__init__.py` (actualizado con todas las exportaciones)
+- ✅ `backend/app/schemas/usuario.py`
+- ✅ `backend/app/schemas/curso.py`
+- ✅ `backend/app/schemas/modulo.py`
+- ✅ `backend/app/schemas/leccion.py`
+- ✅ `backend/app/schemas/quiz.py`
+- ✅ `backend/app/schemas/examen_final.py`
+- ✅ `backend/app/schemas/inscripcion.py`
+- ✅ `backend/app/schemas/intento.py`
+- ✅ `backend/app/schemas/certificado.py`
+- ✅ `backend/app/schemas/progress.py`
+- ✅ `backend/app/schemas/foro.py`
+- ✅ `backend/app/schemas/preferencia.py`
+- ✅ `backend/app/schemas/regla_acreditacion.py`
+- ✅ `backend/app/schemas/rol.py`
+- ✅ `backend/app/schemas/guia_estudio.py`
+- ✅ `backend/app/schemas/evaluacion.py` (schemas básicos existentes)
+
+**Notas de implementación**:
+- Todos los schemas siguen el patrón Base → Create/Update → Response
+- Se incluyen forward references para evitar dependencias circulares
+- Los schemas de progreso están listos para calcular estadísticas y comparaciones
+- `PreguntaConOpciones` incluye el campo `es_correcta` en opciones para identificar respuestas correctas
+- Los schemas están exportados correctamente en `__init__.py`
 
 ---
 
@@ -371,38 +388,47 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 
 ---
 
-### 🔄 Fase 5: Endpoints de Contenido - Lecciones
+### ✅ Fase 5: Endpoints de Contenido - Lecciones
 
-**Estado**: Pendiente
+**Estado**: Completado
 
 **Objetivos**:
 - Endpoints para listar y obtener lecciones
 - Endpoints para contenido de lecciones
 - Validación de acceso según inscripción
 
-**Tareas**:
+**Tareas completadas**:
 
-1. Crear `backend/app/routes/lecciones.py`
-   - `GET /api/modulos/{modulo_id}/lecciones` - Listar lecciones del módulo
-   - `GET /api/lecciones/{leccion_id}` - Obtener lección con contenido
-   - `GET /api/lecciones/{leccion_id}/contenido` - Obtener contenido de lección
-   - `POST /api/lecciones` - Crear lección (admin)
-   - `PUT /api/lecciones/{leccion_id}` - Actualizar lección (admin)
+1. ✅ Crear `backend/app/routes/lecciones.py`
+   - ✅ `GET /api/modulos/{modulo_id}/lecciones` - Listar lecciones del módulo (implementado en `modulos.py`)
+   - ✅ `GET /api/lecciones/{leccion_id}` - Obtener lección con contenido
+   - ✅ `GET /api/lecciones/{leccion_id}/contenido` - Obtener contenido de lección
+   - ✅ `POST /api/lecciones` - Crear lección (admin)
+   - ✅ `PUT /api/lecciones/{leccion_id}` - Actualizar lección (admin)
 
-2. Crear servicio:
-   - `backend/app/services/leccion_service.py`
-   - Validar que usuario esté inscrito en curso del módulo
-   - Validar fechas del módulo (contenido disponible)
+2. ✅ Crear servicio:
+   - ✅ `backend/app/services/leccion_service.py`
+   - ✅ Validar que usuario esté inscrito en curso del módulo (`validate_usuario_inscrito_en_modulo`)
+   - ✅ Validar fechas del módulo (contenido disponible) (`validate_modulo_fechas`)
+   - ✅ Validación completa de acceso (`validate_acceso_leccion`)
 
-**Archivos a crear**:
-- `backend/app/routes/lecciones.py`
-- `backend/app/services/leccion_service.py`
+**Archivos creados**:
+- ✅ `backend/app/routes/lecciones.py`
+- ✅ `backend/app/services/leccion_service.py`
+- ✅ `backend/app/schemas/leccion.py` (actualizado con `LeccionCreate`, `LeccionUpdate`, `LeccionDetailResponse`)
+
+**Notas de implementación**:
+- El endpoint `GET /api/modulos/{modulo_id}/lecciones` está implementado en `modulos.py` para mantener la coherencia con la estructura de rutas
+- Las validaciones incluyen: verificación de inscripción, fechas del módulo, y estado de publicación
+- Los administradores tienen acceso completo sin restricciones
+- Los usuarios no inscritos solo ven lecciones publicadas
+- El router está registrado en `main.py` con prefijo `/api`
 
 ---
 
-### 🔄 Fase 6: Endpoints de Evaluación - Quizzes y Exámenes Finales
+### ✅ Fase 6: Endpoints de Evaluación - Quizzes y Exámenes Finales
 
-**Estado**: Pendiente
+**Estado**: Completado
 
 **Objetivos**:
 - Endpoints para obtener quizzes
@@ -410,84 +436,107 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 - Endpoints para iniciar y enviar intentos
 - Cálculo de puntajes y resultados
 
-**Tareas**:
+**Tareas completadas**:
 
-1. Crear `backend/app/routes/quizzes.py`
-   - `GET /api/lecciones/{leccion_id}/quiz` - Obtener quiz de lección
-   - `GET /api/quizzes/{quiz_id}` - Obtener quiz con preguntas
-   - `POST /api/quizzes/{quiz_id}/iniciar` - Iniciar intento de quiz
-   - `POST /api/quizzes/{quiz_id}/enviar` - Enviar respuestas del quiz
-   - `GET /api/quizzes/{quiz_id}/intentos` - Obtener historial de intentos
+1. ✅ Crear `backend/app/routes/quizzes.py`
+   - ✅ `GET /api/lecciones/{leccion_id}/quiz` - Obtener quiz de lección (implementado en `lecciones.py`)
+   - ✅ `GET /api/quizzes/{quiz_id}` - Obtener quiz con preguntas y opciones
+   - ✅ `POST /api/quizzes/{quiz_id}/iniciar` - Iniciar intento de quiz
+   - ✅ `POST /api/quizzes/{quiz_id}/enviar` - Enviar respuestas del quiz
+   - ✅ `GET /api/quizzes/{quiz_id}/intentos` - Obtener historial de intentos
 
-2. Crear `backend/app/routes/examenes_finales.py`
-   - `GET /api/cursos/{curso_id}/examen-final` - Obtener examen final del curso
-   - `GET /api/examenes-finales/{examen_final_id}` - Obtener examen con preguntas
-   - `POST /api/examenes-finales/{examen_final_id}/iniciar` - Iniciar intento
-   - `POST /api/examenes-finales/{examen_final_id}/enviar` - Enviar respuestas
-   - `GET /api/examenes-finales/{examen_final_id}/intentos` - Historial de intentos
+2. ✅ Crear `backend/app/routes/examenes_finales.py`
+   - ✅ `GET /api/cursos/{curso_id}/examen-final` - Obtener examen final del curso (implementado en `cursos.py`)
+   - ✅ `GET /api/examenes-finales/{examen_final_id}` - Obtener examen con preguntas y opciones
+   - ✅ `POST /api/examenes-finales/{examen_final_id}/iniciar` - Iniciar intento
+   - ✅ `POST /api/examenes-finales/{examen_final_id}/enviar` - Enviar respuestas
+   - ✅ `GET /api/examenes-finales/{examen_final_id}/intentos` - Historial de intentos
 
-3. Crear servicios:
-   - `backend/app/services/quiz_service.py`
-     - Validar máximo intentos (usar regla_acreditacion)
-     - Validar prerrequisitos (todos los quizzes aprobados para examen final)
-     - Calcular puntaje según tipo de pregunta
-     - Determinar si aprobó (usar min_score_aprobatorio)
-   - `backend/app/services/examen_final_service.py`
-     - Similar a quiz_service pero para exámenes finales
-     - Validar que todos los quizzes estén aprobados
+3. ✅ Crear servicios:
+   - ✅ `backend/app/services/quiz_service.py`
+     - ✅ Validar máximo intentos (usar `regla_acreditacion.max_intentos_quiz`)
+     - ✅ Calcular puntaje según tipo de pregunta (usando vista `respuesta_con_evaluacion`)
+     - ✅ Determinar si aprobó (usar `min_score_aprobatorio` de regla)
+     - ✅ Crear `IntentoPregunta` para cada pregunta al iniciar intento
+   - ✅ `backend/app/services/examen_final_service.py`
+     - ✅ Validar que todos los quizzes estén aprobados (`validate_quizzes_aprobados`)
+     - ✅ Validar máximo intentos (usar `regla_acreditacion`)
+     - ✅ Calcular puntaje según tipo de pregunta
+     - ✅ Determinar si aprobó (usar `min_score_aprobatorio`)
 
-4. Lógica de cálculo:
-   - Opción múltiple: puntos si es correcta, penalización si está configurada
-   - Verdadero/Falso: comparar con respuesta correcta
-   - Pregunta abierta: requiere evaluación manual (puntos = NULL)
+4. ✅ Lógica de cálculo implementada:
+   - ✅ Opción múltiple: puntos si es correcta, penalización si `penaliza_error = TRUE` (calculado en vista `respuesta_con_evaluacion`)
+   - ✅ Verdadero/Falso: comparar con `vf_respuesta_correcta`, penalización si está configurada (calculado en vista)
+   - ✅ Pregunta abierta: requiere evaluación manual (puntos = NULL en vista)
 
-**Archivos a crear**:
-- `backend/app/routes/quizzes.py`
-- `backend/app/routes/examenes_finales.py`
-- `backend/app/services/quiz_service.py`
-- `backend/app/services/examen_final_service.py`
+**Archivos creados**:
+- ✅ `backend/app/routes/quizzes.py`
+- ✅ `backend/app/routes/examenes_finales.py`
+- ✅ `backend/app/services/quiz_service.py`
+- ✅ `backend/app/services/examen_final_service.py`
+- ✅ `backend/app/schemas/intento.py` (actualizado con `IntentoSubmission`, `IntentoResult`, `RespuestaCreate`, `RespuestaResponse`)
+
+**Notas de implementación**:
+- El cálculo de puntajes usa la vista `respuesta_con_evaluacion` que calcula automáticamente `es_correcta` y `puntos_otorgados` según el tipo de pregunta
+- La validación de máximo intentos se hace tanto en el servicio (para feedback temprano) como en el trigger de BD (garantía de integridad)
+- La validación de prerrequisitos para examen final verifica que todos los quizzes de las lecciones del curso estén aprobados
+- Los servicios crean automáticamente `IntentoPregunta` para cada pregunta al iniciar un intento
+- El endpoint `GET /api/cursos/{curso_id}/examen-final` está implementado en `cursos.py` para mantener coherencia con la estructura de rutas
+- Los routers están registrados en `main.py` con prefijo `/api`
 
 ---
 
-### 🔄 Fase 7: Endpoints de Inscripción y Progreso
+### ✅ Fase 7: Endpoints de Inscripción y Progreso
 
-**Estado**: Pendiente
+**Estado**: Completado
 
 **Objetivos**:
-- Endpoints para inscribirse a cursos
-- Endpoints para consultar progreso
-- Endpoints para comparar progreso con otros estudiantes
+- ✅ Endpoints para inscribirse a cursos
+- ✅ Endpoints para consultar progreso
+- ✅ Endpoints para comparar progreso con otros estudiantes
 
 **Tareas**:
 
-1. Crear `backend/app/routes/inscripciones.py`
-   - `POST /api/inscripciones` - Inscribirse a un curso
-   - `GET /api/inscripciones` - Listar inscripciones del usuario
-   - `GET /api/inscripciones/{inscripcion_id}` - Obtener detalles de inscripción
-   - `PUT /api/inscripciones/{inscripcion_id}/pausar` - Pausar inscripción
-   - `PUT /api/inscripciones/{inscripcion_id}/reanudar` - Reanudar inscripción
+1. ✅ Crear `backend/app/routes/inscripciones.py`
+   - ✅ `POST /api/inscripciones` - Inscribirse a un curso
+   - ✅ `GET /api/inscripciones` - Listar inscripciones del usuario
+   - ✅ `GET /api/inscripciones/{inscripcion_id}` - Obtener detalles de inscripción
+   - ✅ `PUT /api/inscripciones/{inscripcion_id}/pausar` - Pausar inscripción
+   - ✅ `PUT /api/inscripciones/{inscripcion_id}/reanudar` - Reanudar inscripción
 
-2. Crear `backend/app/routes/progreso.py`
-   - `GET /api/progreso` - Progreso general del usuario
-   - `GET /api/progreso/cursos/{curso_id}` - Progreso en curso específico
-   - `GET /api/progreso/modulos/{modulo_id}` - Progreso en módulo
-   - `GET /api/progreso/cursos/{curso_id}/comparacion` - Comparar con otros estudiantes
+2. ✅ Crear `backend/app/routes/progreso.py`
+   - ✅ `GET /api/progreso` - Progreso general del usuario
+   - ✅ `GET /api/progreso/cursos/{curso_id}` - Progreso en curso específico
+   - ✅ `GET /api/progreso/modulos/{modulo_id}` - Progreso en módulo
+   - ✅ `GET /api/progreso/cursos/{curso_id}/comparacion` - Comparar con otros estudiantes
 
-3. Crear servicios:
-   - `backend/app/services/inscripcion_service.py`
-     - Validar que curso esté disponible
-     - Crear inscripción con estado ACTIVA
-     - Validar transiciones de estado (usar triggers de BD)
-   - `backend/app/services/progreso_service.py`
-     - Calcular progreso basado en lecciones completadas
-     - Calcular progreso basado en quizzes aprobados
-     - Usar vista `inscripcion_modulo_calculada` para módulos
+3. ✅ Crear servicios:
+   - ✅ `backend/app/services/inscripcion_service.py`
+     - ✅ Validar que curso esté disponible
+     - ✅ Crear inscripción con estado ACTIVA
+     - ✅ Validar transiciones de estado (usar triggers de BD)
+   - ✅ `backend/app/services/progreso_service.py`
+     - ✅ Calcular progreso basado en lecciones completadas
+     - ✅ Calcular progreso basado en quizzes aprobados
+     - ✅ Usar vista `inscripcion_modulo_calculada` para módulos
 
-**Archivos a crear**:
-- `backend/app/routes/inscripciones.py`
-- `backend/app/routes/progreso.py`
-- `backend/app/services/inscripcion_service.py`
-- `backend/app/services/progreso_service.py`
+**Archivos creados**:
+- ✅ `backend/app/routes/inscripciones.py`
+- ✅ `backend/app/routes/progreso.py`
+- ✅ `backend/app/services/inscripcion_service.py`
+- ✅ `backend/app/services/progreso_service.py`
+
+**Archivos modificados**:
+- ✅ `backend/app/schemas/inscripcion.py` - Agregados schemas `InscripcionCreate` y `InscripcionUpdate`
+- ✅ `backend/app/main.py` - Registrados routers de inscripciones y progreso
+
+**Notas de implementación**:
+- Los servicios de inscripción validan disponibilidad del curso y evitan duplicados
+- Las transiciones de estado se validan mediante triggers de BD (validar_transicion_estado_inscripcion)
+- El cálculo de progreso considera lecciones completadas (basado en quizzes aprobados), quizzes aprobados, y examen final
+- La vista `inscripcion_modulo_calculada` se utiliza para calcular el progreso a nivel de módulo
+- El servicio de progreso incluye comparación con otros estudiantes del mismo curso
+- Todos los endpoints requieren autenticación JWT
 
 ---
 
@@ -525,36 +574,51 @@ Módulo (con fechas inicio/fin, controla disponibilidad de contenido)
 
 ---
 
-### 🔄 Fase 9: Endpoints de Interacción - Foro y Preferencias
+### ✅ Fase 9: Endpoints de Interacción - Foro y Preferencias
 
-**Estado**: Pendiente
+**Estado**: Completado
 
 **Objetivos**:
-- Endpoints para comentarios en foro
-- Endpoints para preferencias de notificaciones
+- ✅ Endpoints para comentarios en foro
+- ✅ Endpoints para preferencias de notificaciones
 
 **Tareas**:
 
-1. Crear `backend/app/routes/foro.py`
-   - `GET /api/foro/cursos/{curso_id}/lecciones/{leccion_id}/comentarios` - Listar comentarios
-   - `POST /api/foro/cursos/{curso_id}/lecciones/{leccion_id}/comentarios` - Crear comentario
-   - `PUT /api/foro/comentarios/{comentario_id}` - Actualizar comentario propio
-   - `DELETE /api/foro/comentarios/{comentario_id}` - Eliminar comentario propio
+1. ✅ Crear `backend/app/routes/foro.py`
+   - ✅ `GET /api/foro/cursos/{curso_id}/lecciones/{leccion_id}/comentarios` - Listar comentarios
+   - ✅ `POST /api/foro/cursos/{curso_id}/lecciones/{leccion_id}/comentarios` - Crear comentario
+   - ✅ `PUT /api/foro/comentarios/{comentario_id}` - Actualizar comentario propio
+   - ✅ `DELETE /api/foro/comentarios/{comentario_id}` - Eliminar comentario propio
 
-2. Crear `backend/app/routes/preferencias.py`
-   - `GET /api/preferencias` - Obtener preferencias del usuario
-   - `PUT /api/preferencias` - Actualizar preferencias
+2. ✅ Crear `backend/app/routes/preferencias.py`
+   - ✅ `GET /api/preferencias` - Obtener preferencias del usuario
+   - ✅ `PUT /api/preferencias` - Actualizar preferencias
 
-3. Crear servicios:
-   - `backend/app/services/foro_service.py`
-     - Validar que usuario esté inscrito en curso
-   - `backend/app/services/preferencia_service.py`
+3. ✅ Crear servicios:
+   - ✅ `backend/app/services/foro_service.py`
+     - ✅ Validar que usuario esté inscrito en curso
+     - ✅ Validar que lección pertenezca al curso
+     - ✅ Validar autorización para editar/eliminar comentarios
+   - ✅ `backend/app/services/preferencia_service.py`
+     - ✅ Crear preferencias automáticamente si no existen
 
-**Archivos a crear**:
-- `backend/app/routes/foro.py`
-- `backend/app/routes/preferencias.py`
-- `backend/app/services/foro_service.py`
-- `backend/app/services/preferencia_service.py`
+**Archivos creados**:
+- ✅ `backend/app/routes/foro.py`
+- ✅ `backend/app/routes/preferencias.py`
+- ✅ `backend/app/services/foro_service.py`
+- ✅ `backend/app/services/preferencia_service.py`
+
+**Archivos modificados**:
+- ✅ `backend/app/schemas/foro.py` - Agregados schemas `ForoComentarioCreate` y `ForoComentarioUpdate`
+- ✅ `backend/app/schemas/preferencia.py` - Agregados schemas `PreferenciaNotificacionCreate` y `PreferenciaNotificacionUpdate`
+- ✅ `backend/app/main.py` - Registrados routers de foro y preferencias
+
+**Notas de implementación**:
+- El servicio de foro valida que el usuario esté inscrito en el curso antes de permitir comentarios
+- Se valida que la lección pertenezca al curso especificado
+- Los usuarios solo pueden editar/eliminar sus propios comentarios (admins pueden eliminar cualquier comentario)
+- El servicio de preferencias crea automáticamente el registro si no existe al obtener o actualizar
+- Todos los endpoints requieren autenticación JWT
 
 ---
 
@@ -824,9 +888,12 @@ backend/
 
 1. ✅ **Fase 1**: Autenticación y Servicios Externos - **COMPLETADO**
 2. ✅ **Fase 2**: Modelos SQLAlchemy y conexión a BD - **COMPLETADO**
-3. **Fase 3**: Crear schemas Pydantic basados en modelos
+3. ✅ **Fase 3**: Crear schemas Pydantic basados en modelos - **COMPLETADO**
 4. ✅ **Fase 4**: Implementar endpoints core (usuarios, módulos, cursos) - **COMPLETADO**
-5. **Fase 5**: Implementar endpoints de contenido (lecciones)
+5. ✅ **Fase 5**: Implementar endpoints de contenido (lecciones) - **COMPLETADO**
+6. ✅ **Fase 6**: Implementar endpoints de evaluación (quizzes y exámenes finales) - **COMPLETADO**
+7. ✅ **Fase 7**: Implementar endpoints de inscripción y progreso - **COMPLETADO**
+8. ✅ **Fase 9**: Implementar endpoints de interacción (foro y preferencias) - **COMPLETADO**
 
 ---
 

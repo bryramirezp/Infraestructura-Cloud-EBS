@@ -28,6 +28,15 @@ export * from './grades';
 // Report widgets
 export * from './reports';
 
+// Module widgets
+export * from './module';
+
+// Lesson widgets
+export * from './lesson';
+
+// Quiz widgets
+export * from './quiz';
+
 // Layout widgets (ya están siendo usados directamente)
 // export * from './layout';
 

@@ -1,7 +1,7 @@
 from sqlalchemy import (
     String, Text, Boolean, Integer, Numeric, Date,
     DateTime, ForeignKey, UniqueConstraint, CheckConstraint,
-    func
+    Index, func
 )
 from sqlalchemy.dialects.postgresql import UUID, ENUM
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -26,15 +26,12 @@ class Usuario(Base):
     
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        server_default=func.gen_random_uuid()
+        primary_key=True
     )
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     apellido: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str] = mapped_column(String(190), unique=True, nullable=False, index=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    cognito_user_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     actualizado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -359,6 +356,7 @@ class InscripcionCurso(Base):
     __table_args__ = (
         UniqueConstraint("usuario_id", "curso_id", name="uq_usuario_curso"),
         CheckConstraint("fecha_conclusion IS NULL OR fecha_conclusion >= fecha_inscripcion", name="chk_fechas_inscripcion"),
+        Index("idx_inscripcion_usuario_curso", "usuario_id", "curso_id"),
     )
 
 
@@ -394,6 +392,10 @@ class Intento(Base):
             name="chk_intento_quiz_o_examen"
         ),
         UniqueConstraint("usuario_id", "quiz_id", "inscripcion_curso_id", "numero_intento", name="uq_intento_usuario_quiz_inscripcion"),
+        Index("idx_intento_usuario_quiz", "usuario_id", "quiz_id"),
+        Index("idx_intento_usuario_examen", "usuario_id", "examen_final_id"),
+        Index("idx_intento_activo", "usuario_id", "quiz_id", "inscripcion_curso_id", "finalizado_en"),
+        Index("idx_intento_activo_examen", "usuario_id", "examen_final_id", "inscripcion_curso_id", "finalizado_en"),
     )
 
 
@@ -512,6 +514,10 @@ class ForoComentario(Base):
     usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="comentarios")
     curso: Mapped["Curso"] = relationship("Curso", back_populates="comentarios")
     leccion: Mapped["Leccion"] = relationship("Leccion", back_populates="comentarios")
+    
+    __table_args__ = (
+        Index("idx_foro_comentario_curso_leccion", "curso_id", "leccion_id"),
+    )
 
 
 class PreferenciaNotificacion(Base):

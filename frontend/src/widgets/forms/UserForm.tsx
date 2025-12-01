@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/Dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { cn } from '@/shared/lib/utils';
 import type { UserFormData, UserRole, UserStatus } from '@/entities/user';
 import { USER_ROLES, USER_STATUSES } from '@/entities/user/model/constants';
