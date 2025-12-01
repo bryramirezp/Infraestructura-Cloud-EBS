@@ -364,13 +364,18 @@ async def get_tokens(request: Request):
 
 
 @router.post("/set-tokens")
-<<<<<<< HEAD
 async def set_tokens(request: Request, tokens: SetTokensRequest = Body(...)):
     """Receive tokens from frontend and set them as HTTP-only cookies.
     
     This endpoint is used when the frontend authenticates directly with Cognito
     and needs to send the tokens to the backend to establish a session.
+    
+    WARNING: This endpoint is a security risk and should only be used in development.
+    In production, tokens should only be set via the /callback endpoint.
     """
+    if settings.is_production:
+        raise AuthenticationError("This endpoint is not available in production")
+    
     access_token = tokens.access_token
     refresh_token = tokens.refresh_token
     id_token = tokens.id_token
@@ -392,32 +397,38 @@ async def set_tokens(request: Request, tokens: SetTokensRequest = Body(...)):
         raise AuthenticationError(f"Error validating token: {str(e)}")
     
     # Optionally validate id_token (same user, same issuer)
-    try:
-        id_public_key = await get_rsa_key(id_token)
-        id_payload = jwt.decode(
-            id_token,
-            id_public_key,
-            algorithms=["RS256"],
-            audience=settings.cognito_client_id,
-            issuer=settings.cognito_issuer,
-            options={"verify_signature": True, "verify_aud": True, "verify_exp": True},
-        )
-        # Verify that both tokens belong to the same user
-        if id_payload.get("sub") != payload.get("sub"):
-            raise AuthenticationError("Token user mismatch")
-    except (InvalidTokenError, DecodeError) as e:
-        # ID token validation is optional but recommended
-        # Log warning but don't fail the request
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(f"ID token validation failed: {str(e)}")
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Error validating ID token: {str(e)}")
+    if id_token:
+        try:
+            id_public_key = await get_rsa_key(id_token)
+            id_payload = jwt.decode(
+                id_token,
+                id_public_key,
+                algorithms=["RS256"],
+                audience=settings.cognito_client_id,
+                issuer=settings.cognito_issuer,
+                options={"verify_signature": True, "verify_aud": True, "verify_exp": True},
+            )
+            # Verify that both tokens belong to the same user
+            if id_payload.get("sub") != payload.get("sub"):
+                raise AuthenticationError("Token user mismatch")
+        except (InvalidTokenError, DecodeError) as e:
+            # ID token validation is optional but recommended
+            # Log warning but don't fail the request
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"ID token validation failed: {str(e)}")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error validating ID token: {str(e)}")
     
     # Get user role from token
     role = get_user_role(payload)
+    
+    # Determine cookie security settings
+    is_secure = settings.cookie_secure
+    if settings.is_development:
+        is_secure = False
     
     # Create response with user profile
     response = JSONResponse({
@@ -436,7 +447,7 @@ async def set_tokens(request: Request, tokens: SetTokensRequest = Body(...)):
             refresh_token,
             max_age=settings.cookie_refresh_max_age,
             httponly=True,
-            secure=settings.cookie_secure,
+            secure=is_secure,
             samesite=settings.cookie_samesite,
             domain=settings.cookie_domain,
         )
@@ -446,7 +457,7 @@ async def set_tokens(request: Request, tokens: SetTokensRequest = Body(...)):
         access_token,
         max_age=settings.cookie_access_max_age,
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=is_secure,
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
@@ -457,106 +468,12 @@ async def set_tokens(request: Request, tokens: SetTokensRequest = Body(...)):
             id_token,
             max_age=settings.cookie_access_max_age,
             httponly=True,
-            secure=settings.cookie_secure,
+            secure=is_secure,
             samesite=settings.cookie_samesite,
             domain=settings.cookie_domain,
         )
     
     return response
-
-
-@router.get("/profile")
-async def get_profile(request: Request):
-    """Get current user profile from access token."""
-    access_token = request.cookies.get("access_token")
-=======
-async def set_tokens(request: Request):
-    """Set authentication tokens as HTTP-only cookies from request body.
-    Used when frontend authenticates directly with Cognito (e.g., NEW_PASSWORD_REQUIRED flow).
->>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
-    
-    WARNING: This endpoint is a security risk and should only be used in development.
-    In production, tokens should only be set via the /callback endpoint.
-    """
-    if settings.is_production:
-        raise AuthenticationError("This endpoint is not available in production")
-    
-    try:
-        body = await request.json()
-        access_token = body.get("access_token")
-        refresh_token = body.get("refresh_token")
-        id_token = body.get("id_token")
-        
-        if not access_token:
-            raise AuthenticationError("Missing access_token in request body")
-        
-        # Validate access token by decoding it
-        try:
-            public_key = await get_rsa_key(access_token)
-            payload = jwt.decode(
-                access_token,
-                public_key,
-                algorithms=["RS256"],
-                audience=None,
-                issuer=settings.cognito_issuer,
-                options={"verify_signature": True, "verify_aud": False, "verify_exp": True},
-            )
-        except (InvalidTokenError, DecodeError, Exception):
-            raise AuthenticationError("Invalid access token")
-        
-        role = get_user_role(payload)
-        
-        # Set cookies
-        response = JSONResponse({
-            "user_id": payload.get("sub"),
-            "email": payload.get("email"),
-            "name": payload.get("name"),
-            "role": role.value if role else "UNKNOWN",
-            "groups": payload.get("cognito:groups", []),
-        })
-        
-        # Determine cookie security settings
-        is_secure = settings.cookie_secure
-        if settings.is_development:
-            is_secure = False
-        
-        if refresh_token:
-            response.set_cookie(
-                "refresh_token",
-                refresh_token,
-                max_age=settings.cookie_refresh_max_age,
-                httponly=True,
-                secure=is_secure,
-                samesite=settings.cookie_samesite,
-                domain=settings.cookie_domain,
-            )
-        
-        response.set_cookie(
-            "access_token",
-            access_token,
-            max_age=settings.cookie_access_max_age,
-            httponly=True,
-            secure=is_secure,
-            samesite=settings.cookie_samesite,
-            domain=settings.cookie_domain,
-        )
-        
-        if id_token:
-            response.set_cookie(
-                "id_token",
-                id_token,
-                max_age=settings.cookie_access_max_age,
-                httponly=True,
-                secure=is_secure,
-                samesite=settings.cookie_samesite,
-                domain=settings.cookie_domain,
-            )
-        
-        return response
-    except Exception as e:
-        if isinstance(e, AuthenticationError):
-            raise
-        raise AuthenticationError(f"Failed to set tokens: {str(e)}")
 
 
 

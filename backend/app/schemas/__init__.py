@@ -40,7 +40,6 @@ from .evaluacion import (
     ExamenFinalResponse,
     PreguntaBase,
     PreguntaResponse,
-    PreguntaConfigBase,
     OpcionBase,
     OpcionResponse,
 )
@@ -50,6 +49,7 @@ from .quiz import (
     QuizDetailResponse,
     PreguntaCreate,
     PreguntaUpdate,
+    PreguntaConfigBase,
     PreguntaConfigCreate,
     PreguntaConfigUpdate,
     PreguntaConfigResponse,
