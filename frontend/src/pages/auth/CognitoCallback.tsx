@@ -4,7 +4,8 @@ import { Loader2, AlertCircle } from 'lucide-react';
 
 /**
  * Component to handle Cognito OAuth2 callback
- * Extracts authorization code and sends it to backend with PKCE verifier
+ * The backend already has the PKCE verifier in cookies, so we just need to
+ * forward the callback to the backend which will exchange the code for tokens
  */
 export const CognitoCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -38,64 +39,16 @@ export const CognitoCallback: React.FC = () => {
           return;
         }
 
-        // Get stored PKCE parameters
-        const storedState = sessionStorage.getItem('pkce_state');
-        const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
-
-        // Validate state
-        if (storedState !== state) {
-          setError('Estado de seguridad no coincide');
-          setTimeout(() => {
-            navigate('/login?error=state_mismatch');
-          }, 3000);
-          return;
-        }
-
-        if (!codeVerifier) {
-          setError('No se encontró el verificador PKCE');
-          setTimeout(() => {
-            navigate('/login?error=missing_verifier');
-          }, 3000);
-          return;
-        }
-
         // Get backend URL
-        const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api';
+        const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
         const BASE_URL = API_URL.endsWith('/api') 
-          ? API_URL.slice(0, -4)
+          ? API_URL.slice(0, -4) // Remove '/api'
           : API_URL.replace(/\/api$/, '');
 
-        // Send code and verifier to backend for token exchange
-        const response = await fetch(`${BASE_URL}/auth/callback?code=${code}&state=${state}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Important for cookies
-          body: JSON.stringify({
-            code_verifier: codeVerifier,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ detail: 'Error desconocido' }));
-          throw new Error(errorData.detail || 'Error al intercambiar código por tokens');
-        }
-
-        // Clear stored PKCE parameters
-        sessionStorage.removeItem('pkce_code_verifier');
-        sessionStorage.removeItem('pkce_state');
-
-        // Backend will set cookies and redirect, but if it doesn't, redirect manually
-        const data = await response.json().catch(() => ({}));
-        
-        // If backend returns a redirect URL, use it
-        if (data.redirect_url) {
-          window.location.href = data.redirect_url;
-        } else {
-          // Otherwise redirect to dashboard
-          navigate('/dashboard');
-        }
+        // Forward the callback to backend
+        // Backend has the code_verifier in cookies, so it can exchange the code
+        // Backend will set JWT cookies and redirect us to the dashboard
+        window.location.href = `${BASE_URL}/api/auth/callback?code=${code}&state=${state}`;
       } catch (err: any) {
         console.error('Error en callback de Cognito:', err);
         setError(err.message || 'Error al procesar autenticación');

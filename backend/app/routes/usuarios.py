@@ -13,7 +13,7 @@ from app.utils.roles import UserRole, require_any_role, require_role
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
 
-@router.get("/me", response_model=UsuarioResponse, status_code=status.HTTP_200_OK)
+@router.get("/me", status_code=status.HTTP_200_OK)
 async def get_profile(
 	token_payload: dict = Depends(get_current_user),
 	db: AsyncSession = Depends(get_db),
@@ -22,11 +22,33 @@ async def get_profile(
 	Obtener perfil del usuario autenticado.
 	
 	- **Permisos**: Requiere autenticación
-	- **Respuesta**: Datos del perfil del usuario autenticado
+	- **Respuesta**: Datos del perfil del usuario autenticado incluyendo rol y grupos
 	"""
+	from app.utils.roles import get_user_role
+	
 	service = UsuarioService(db)
 	usuario = await service.get_by_cognito_id(token_payload.get("sub"))
-	return usuario
+	
+	# Obtener rol del token
+	role = get_user_role(token_payload)
+	
+	# Construir respuesta manualmente para evitar problemas con relaciones cargadas
+	usuario_dict = {
+		"id": usuario.id,
+		"nombre": usuario.nombre,
+		"apellido": usuario.apellido,
+		"name": f"{usuario.nombre} {usuario.apellido}".strip(),  # Campo combinado para frontend
+		"email": usuario.email,
+		"avatar_url": usuario.avatar_url,
+		"creado_en": usuario.creado_en,
+		"actualizado_en": usuario.actualizado_en,
+		"role": role.lower() if role else None,
+		"groups": token_payload.get("cognito:groups", []),
+		"user_id": str(usuario.id),
+		"exp": token_payload.get("exp"),
+	}
+	
+	return usuario_dict
 
 
 @router.put("/me", response_model=UsuarioResponse, status_code=status.HTTP_200_OK)

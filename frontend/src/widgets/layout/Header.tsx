@@ -29,10 +29,10 @@ export const Header: React.FC<HeaderProps> = ({ user, onMenuToggle, onLogout }) 
           <div className="flex justify-between items-center h-14 sm:h-16">
             <div className="flex items-center min-w-0 flex-1">
               <Link to="/" className="flex items-center min-w-0">
-                <img 
-                  src={logoLight} 
-                  alt="Escuela Bíblica Salem" 
-                  className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0 object-contain" 
+                <img
+                  src={logoLight}
+                  alt="Escuela Bíblica Salem"
+                  className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0 object-contain"
                 />
                 <span className="ml-2 text-lg sm:text-xl font-bold text-foreground truncate">EBS Online</span>
               </Link>
@@ -62,10 +62,10 @@ export const Header: React.FC<HeaderProps> = ({ user, onMenuToggle, onLogout }) 
               </button>
             )}
             <Link to="/" className="flex items-center min-w-0">
-              <img 
-                src={logo} 
-                alt="Escuela Bíblica Salem" 
-                className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0 object-contain transition-opacity duration-200" 
+              <img
+                src={logo}
+                alt="Escuela Bíblica Salem"
+                className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0 object-contain transition-opacity duration-200"
               />
               <span className="ml-2 text-lg sm:text-xl font-bold text-foreground truncate">EBS Online</span>
             </Link>
@@ -112,6 +112,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onMenuToggle, onLogout }) 
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={onLogout}
                   className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
                   aria-label="Cerrar sesión"

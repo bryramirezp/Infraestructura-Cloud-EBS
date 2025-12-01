@@ -39,10 +39,10 @@ const LoginRedirect: React.FC = () => {
   React.useEffect(() => {
     // Redirect to backend login endpoint
     // Backend handles PKCE flow and redirects to Cognito Hosted UI
-    const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api';
+    const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:5000/api';
     const BASE_URL = API_URL.endsWith('/api') 
-      ? API_URL.slice(0, -4)
-      : API_URL.replace(/\/api$/, '');
+      ? API_URL.slice(0, -4) // Remove '/api'
+      : API_URL.replace(/\/api$/, ''); // Fallback: remove trailing /api
     
     // Backend endpoint: GET /api/auth/login
     window.location.href = `${BASE_URL}/api/auth/login`;

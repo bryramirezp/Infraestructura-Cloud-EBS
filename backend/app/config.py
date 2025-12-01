@@ -89,6 +89,11 @@ class Settings(BaseSettings):
             kwargs.setdefault("cognito_user_pool_id", os.getenv("COGNITO_USER_POOL_ID") or "dev-pool-id")
             kwargs.setdefault("cognito_client_id", os.getenv("COGNITO_CLIENT_ID") or "dev-client-id")
             kwargs.setdefault("cognito_redirect_uri", os.getenv("COGNITO_REDIRECT_URI") or "http://localhost:5173/auth/callback")
+            
+            # FORCE insecure cookies for localhost development
+            # Browsers reject "Secure" cookies over HTTP (localhost)
+            kwargs["cookie_secure"] = False
+            kwargs["cookie_samesite"] = "Lax"
         
         super().__init__(**kwargs)
         # Debug: Log environment variables (solo en desarrollo para no exponer secrets)
@@ -100,6 +105,8 @@ class Settings(BaseSettings):
                 logger.info(f"DATABASE_URL loaded in settings: {self.database_url[:60]}...")
             else:
                 logger.warning("DATABASE_URL not found in settings, will construct from components")
+            
+            logger.info(f"Development mode: Cookies configured as Secure={self.cookie_secure}, SameSite={self.cookie_samesite}")
         self._validate_settings()
 
     def _validate_settings(self):

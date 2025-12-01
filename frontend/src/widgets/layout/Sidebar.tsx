@@ -13,6 +13,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import { BookOpen, Calendar, FileText, Users, Settings, BarChart3, GraduationCap, UserCheck, LogOut, Award } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -472,7 +473,7 @@ const SidebarMenuAction = React.forwardRef<
         "peer-data-[size=lg]/menu-button:top-3",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
+        "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0",
         className,
       )}
       {...props}
@@ -627,6 +628,7 @@ const UserSidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">
   ({ user, ...props }, ref) => {
     const { pathname } = useLocation();
     const { toggleSidebar } = useSidebar();
+    const { logout } = useAuth();
 
     const getMenuItems = () => {
       switch (user?.role) {
@@ -723,12 +725,7 @@ const UserSidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">
         </SidebarContent>
         <SidebarFooter>
           <SidebarUserProfile user={user} />
-          <SidebarLogoutButton onLogout={() => {
-            // Import useAuth here or pass logout function from parent
-            // For now, we'll use window.location to redirect to login
-            localStorage.removeItem('ebsalem_user');
-            window.location.href = '/login';
-          }} />
+          <SidebarLogoutButton onLogout={logout} />
         </SidebarFooter>
       </Sidebar>
     );

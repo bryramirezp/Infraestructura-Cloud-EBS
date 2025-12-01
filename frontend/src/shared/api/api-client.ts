@@ -34,8 +34,12 @@ class APIClient {
     const baseUrl = useBaseUrl ? BASE_URL : API_URL;
     const url = `${baseUrl}${endpoint}`;
 
-    // Log URL in development for debugging
-    if ((import.meta as any).env.DEV) {
+    // Lista de endpoints donde un 401 es esperado (usuario no autenticado)
+    const endpointsWhere401IsExpected = ['/usuarios/me', '/api/usuarios/me'];
+    const is401Expected = endpointsWhere401IsExpected.some(ep => endpoint.includes(ep));
+
+    // Log URL in development for debugging (pero no para endpoints donde 401 es esperado)
+    if ((import.meta as any).env.DEV && !is401Expected) {
       console.log(`[API Client] ${options.method || 'GET'} ${url}`);
     }
 
@@ -72,6 +76,12 @@ class APIClient {
         // para que use-auth.ts pueda detectarlo como error esperado
         if (response.status === 401 || response.status === 403) {
           errorMessage = `${response.status} ${errorMessage}`;
+          
+          // Si el 401 es esperado (usuario no autenticado en endpoint público), no loggear error
+          if (response.status === 401 && is401Expected) {
+            // No loggear nada - esto es un comportamiento esperado
+            // El error se lanzará silenciosamente para ser manejado por use-auth.ts
+          }
         }
         
         throw new Error(errorMessage);
@@ -79,6 +89,11 @@ class APIClient {
 
       return response;
     } catch (error: any) {
+      // Si el 401 es esperado, no loggear nada y lanzar el error silenciosamente
+      if (is401Expected && (error.message?.includes('401') || error.message?.includes('Unauthorized'))) {
+        throw error; // Lanzar silenciosamente - será manejado por use-auth.ts
+      }
+      
       // Mejorar mensaje de error para "Failed to fetch"
       if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
         const isAuthEndpoint = endpoint.includes('/auth/');

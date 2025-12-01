@@ -7,14 +7,14 @@ interface ProtectedRouteProps {
   requiredRole?: 'student' | 'teacher' | 'admin';
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  requiredRole 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requiredRole
 }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
 
   // Mostrar loading mientras se verifica la autenticación
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -28,8 +28,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Si se requiere un rol específico y el usuario no lo tiene
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/dashboard" replace />;
+  // Normalizar roles antes de comparar (case-insensitive)
+  if (requiredRole && user?.role) {
+    const normalizedUserRole = user.role.toLowerCase();
+    const normalizedRequiredRole = requiredRole.toLowerCase();
+
+    if (normalizedUserRole !== normalizedRequiredRole) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <>{children}</>;

@@ -36,13 +36,19 @@ async def login(request: Request):
     # Create redirect response to Cognito Hosted UI
     redirect_response = RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
     
+    # Determine cookie security settings
+    # Force secure=False in development to ensure cookies work on localhost (HTTP)
+    is_secure = settings.cookie_secure
+    if settings.is_development:
+        is_secure = False
+        
     # Store state and PKCE verifier in HTTP-only cookies
     redirect_response.set_cookie(
         "auth_state",
         state,
         max_age=600,  # 10 minutes
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=is_secure,
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
@@ -53,7 +59,7 @@ async def login(request: Request):
         code_verifier,
         max_age=600,  # 10 minutes
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=is_secure,
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
@@ -64,7 +70,7 @@ async def login(request: Request):
         nonce,
         max_age=600,
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=is_secure,
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
@@ -145,7 +151,7 @@ async def callback(request: Request):
     elif role == UserRole.COORDINATOR:
         target = "/dashboard"  # Frontend route
     elif role == UserRole.ADMIN:
-        target = "/admin/dashboard"  # Frontend route
+        target = "/admin"  # Frontend route
     else:
         target = "/unauthorized"  # Frontend route
     
@@ -171,13 +177,19 @@ async def callback(request: Request):
         response = RedirectResponse(url=frontend_url, status_code=status.HTTP_302_FOUND)
 
     # Set auth cookies (HTTP-only) - works for both JSONResponse and RedirectResponse
+    
+    # Determine cookie security settings
+    is_secure = settings.cookie_secure
+    if settings.is_development:
+        is_secure = False
+
     if refresh_token:
         response.set_cookie(
             "refresh_token",
             refresh_token,
             max_age=settings.cookie_refresh_max_age,
             httponly=True,
-            secure=settings.cookie_secure,
+            secure=is_secure,
             samesite=settings.cookie_samesite,
             domain=settings.cookie_domain,
         )
@@ -187,7 +199,7 @@ async def callback(request: Request):
         access_token,
         max_age=settings.cookie_access_max_age,
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=is_secure,
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
@@ -199,7 +211,7 @@ async def callback(request: Request):
             id_token,
             max_age=settings.cookie_access_max_age,
             httponly=True,
-            secure=settings.cookie_secure,
+            secure=is_secure,
             samesite=settings.cookie_samesite,
             domain=settings.cookie_domain,
         )
@@ -232,15 +244,35 @@ async def refresh(request: Request):
         raise AuthenticationError("No access token returned from refresh")
 
     response = JSONResponse({"status": "ok"})
+    
+    # Determine cookie security settings
+    is_secure = settings.cookie_secure
+    if settings.is_development:
+        is_secure = False
+    
+    # Update access_token cookie
     response.set_cookie(
         "access_token",
         access_token,
         max_age=settings.cookie_access_max_age,
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=is_secure,
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
+    
+    # Update id_token if present (Cognito returns it on refresh)
+    id_token = tokens.get("id_token")
+    if id_token:
+        response.set_cookie(
+            "id_token",
+            id_token,
+            max_age=settings.cookie_access_max_age,
+            httponly=True,
+            secure=is_secure,
+            samesite=settings.cookie_samesite,
+            domain=settings.cookie_domain,
+        )
 
     return response
 
@@ -249,10 +281,39 @@ async def refresh(request: Request):
 async def logout(request: Request):
     # Clear cookies
     response = JSONResponse({"status": "logged_out"})
-    response.delete_cookie("access_token", domain=settings.cookie_domain)
-    response.delete_cookie("refresh_token", domain=settings.cookie_domain)
-    response.delete_cookie("auth_state", domain=settings.cookie_domain)
-    # Optionally clear any PKCE cookie(s) — best-effort: prefix-based deletion is not possible here
+    
+    # Determine cookie security settings to match creation
+    is_secure = settings.cookie_secure
+    if settings.is_development:
+        is_secure = False
+    
+    # Prepare cookie deletion parameters
+    # When cookie_domain is None, don't pass it to delete_cookie (FastAPI handles it better)
+    cookie_params = {
+        "path": "/",
+        "httponly": True,
+        "secure": is_secure,
+        "samesite": settings.cookie_samesite,
+    }
+    
+    # Only add domain if it's not None
+    if settings.cookie_domain:
+        cookie_params["domain"] = settings.cookie_domain
+    
+    # Delete standard auth cookies with exact same attributes as creation
+    # Note: max_age=0 is automatically set by delete_cookie
+    response.delete_cookie("access_token", **cookie_params)
+    response.delete_cookie("refresh_token", **cookie_params)
+    response.delete_cookie("auth_state", **cookie_params)
+    response.delete_cookie("id_token", **cookie_params)
+    response.delete_cookie("auth_nonce", **cookie_params)
+    
+    # Delete all PKCE cookies dynamically (they have names like pkce_<state>)
+    # Iterate over all cookies to find and delete PKCE cookies
+    for cookie_name in request.cookies.keys():
+        if cookie_name.startswith("pkce_"):
+            response.delete_cookie(cookie_name, **cookie_params)
+        
     return response
 
 
@@ -339,13 +400,18 @@ async def set_tokens(request: Request):
             "groups": payload.get("cognito:groups", []),
         })
         
+        # Determine cookie security settings
+        is_secure = settings.cookie_secure
+        if settings.is_development:
+            is_secure = False
+        
         if refresh_token:
             response.set_cookie(
                 "refresh_token",
                 refresh_token,
                 max_age=settings.cookie_refresh_max_age,
                 httponly=True,
-                secure=settings.cookie_secure,
+                secure=is_secure,
                 samesite=settings.cookie_samesite,
                 domain=settings.cookie_domain,
             )
@@ -355,7 +421,7 @@ async def set_tokens(request: Request):
             access_token,
             max_age=settings.cookie_access_max_age,
             httponly=True,
-            secure=settings.cookie_secure,
+            secure=is_secure,
             samesite=settings.cookie_samesite,
             domain=settings.cookie_domain,
         )
@@ -366,7 +432,7 @@ async def set_tokens(request: Request):
                 id_token,
                 max_age=settings.cookie_access_max_age,
                 httponly=True,
-                secure=settings.cookie_secure,
+                secure=is_secure,
                 samesite=settings.cookie_samesite,
                 domain=settings.cookie_domain,
             )

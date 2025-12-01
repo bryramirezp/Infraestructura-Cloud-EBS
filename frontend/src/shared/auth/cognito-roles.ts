@@ -11,15 +11,16 @@ export const COGNITO_GROUPS = {
 /**
  * Constantes para roles de la aplicación
  * Estos son los roles que se usan en el frontend
+ * Nota: Los roles se normalizan a minúsculas para consistencia con el backend
  */
 export const APP_ROLES = {
-  ADMIN: 'ADMIN',
-  STUDENT: 'STUDENT',
-  COORDINATOR: 'COORDINATOR',
-  UNKNOWN: 'UNKNOWN',
+  ADMIN: 'admin',
+  STUDENT: 'student',
+  COORDINATOR: 'coordinator',
+  UNKNOWN: 'unknown',
 } as const;
 
-export type AppRole = typeof APP_ROLES[keyof typeof APP_ROLES];
+export type AppRole = typeof APP_ROLES[keyof typeof APP_ROLES] | 'admin' | 'student' | 'coordinator' | 'unknown';
 
 /**
  * Mapeo de grupos de Cognito a roles de la aplicación
