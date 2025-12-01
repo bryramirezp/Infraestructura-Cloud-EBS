@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Loader2, Shield } from 'lucide-react';
 import { useAuthContext } from '@/app/providers/AuthProvider';
-import { useTheme } from '@/app/styles/theme';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// Temporarily remove logo imports until paths are fixed
-// import logoLight from '../../assets/images/Logo Modo Claro.png';
-// import logoDark from '../../assets/images/Logo Modo Oscuro.png';
 
 // Esquema de validación para el formulario de login
 const loginSchema = z.object({
@@ -18,15 +14,11 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-export const LoginPage: React.FC = () => {
+export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, isLoading, login, error } = useAuthContext();
-  const { isDark, mounted } = useTheme();
   
-  // Logo según el tema - temporarily use placeholder
-  // const logo = isDark ? logoDark : logoLight;
-  const logo = null; // Will show text placeholder instead
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,35 +32,31 @@ export const LoginPage: React.FC = () => {
     resolver: zodResolver(loginSchema),
   });
 
-  // Verificar si hay parámetros en la URL (ej: después de logout, error, etc.)
+  // Verificar si hay parámetros en la URL
   useEffect(() => {
     const errorParam = searchParams.get('error');
     const logoutParam = searchParams.get('logout');
-    const registeredParam = searchParams.get('registered');
 
     if (errorParam) {
       setMessage('Error de autenticación. Por favor intenta nuevamente.');
     } else if (logoutParam) {
       setMessage('Has cerrado sesión correctamente.');
-    } else if (registeredParam) {
-      setMessage('Registro exitoso. Por favor inicia sesión.');
     }
 
     // Limpiar parámetros de la URL
-    if (errorParam || logoutParam || registeredParam) {
+    if (errorParam || logoutParam) {
       const newSearchParams = new URLSearchParams(searchParams);
       newSearchParams.delete('error');
       newSearchParams.delete('logout');
-      newSearchParams.delete('registered');
       const newUrl = `${window.location.pathname}${newSearchParams.toString() ? `?${newSearchParams.toString()}` : ''}`;
       window.history.replaceState({}, '', newUrl);
     }
   }, [searchParams]);
 
-  // Redirigir si ya está autenticado
+  // Redirigir si ya está autenticado y es administrador
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      navigate('/dashboard');
+      navigate('/admin/dashboard');
     }
   }, [isAuthenticated, isLoading, navigate]);
 
@@ -88,10 +76,20 @@ export const LoginPage: React.FC = () => {
     try {
       setIsSubmitting(true);
       setMessage('');
+      
+      // Intentar login con redirección a dashboard de administrador
       await login(data.email, data.password);
-    } catch (err) {
-      // El error ya está manejado en el hook useAuth
-      console.error('Error en login:', err);
+      
+      // Después del login, verificar si el usuario tiene permisos de administrador
+      // Esto se manejará en el hook useAuth, pero podemos agregar validación adicional aquí
+    } catch (err: any) {
+      // Verificar si el error es por falta de permisos
+      if (err?.message?.includes('permisos') || err?.message?.includes('administrador')) {
+        setMessage('No tienes permisos de administrador. Por favor inicia sesión como estudiante.');
+      } else {
+        // El error ya está manejado en el hook useAuth
+        console.error('Error en login:', err);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -113,42 +111,30 @@ export const LoginPage: React.FC = () => {
         <div className="max-w-md w-full space-y-8 bg-card p-8 rounded-xl shadow-sm border border-border">
           <div>
             <div className="flex justify-center">
-              {mounted ? (
-                logo ? (
-                  <img
-                    src={logo}
-                    alt="Escuela Bíblica Salem"
-                    className="h-12 w-12 object-contain transition-opacity duration-200"
-                  />
-                ) : (
-                  <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center">
-                    <span className="text-primary-foreground font-bold text-xl">EBS</span>
-                  </div>
-                )
-              ) : (
-                <div className="h-12 w-12 bg-muted rounded-lg animate-pulse"></div>
-              )}
+              <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center">
+                <Shield className="h-6 w-6 text-primary-foreground" />
+              </div>
             </div>
             <h2 className="mt-6 text-center text-3xl font-bold text-foreground">
-              Iniciar Sesión
+              Acceso Administrador
             </h2>
             <p className="mt-2 text-center text-sm text-muted-foreground">
-              Ingresa tus credenciales para acceder a la plataforma
+              Ingresa tus credenciales de administrador para acceder al panel
             </p>
           </div>
           
           {/* Mensajes informativos */}
           {message && (
             <div className={`rounded-lg p-4 flex items-start space-x-2 ${
-              message.includes('Error') 
+              message.includes('Error') || message.includes('permisos')
                 ? 'bg-destructive/10 border border-destructive/20' 
                 : 'bg-primary/10 border border-primary/20'
             }`}>
               <AlertCircle className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                message.includes('Error') ? 'text-destructive' : 'text-primary'
+                message.includes('Error') || message.includes('permisos') ? 'text-destructive' : 'text-primary'
               }`} />
               <p className={`text-sm ${
-                message.includes('Error') ? 'text-destructive' : 'text-primary'
+                message.includes('Error') || message.includes('permisos') ? 'text-destructive' : 'text-primary'
               }`}>
                 {message}
               </p>
@@ -180,7 +166,7 @@ export const LoginPage: React.FC = () => {
                   className={`block w-full pl-10 pr-3 py-2 border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent ${
                     errors.email ? 'border-destructive' : 'border-border'
                   }`}
-                  placeholder="tu@email.com"
+                  placeholder="admin@email.com"
                   disabled={isSubmitting}
                 />
               </div>
@@ -239,26 +225,26 @@ export const LoginPage: React.FC = () => {
                   <span>Iniciando sesión...</span>
                 </>
               ) : (
-                <span>Iniciar Sesión</span>
+                <>
+                  <Shield className="h-5 w-5" />
+                  <span>Iniciar Sesión como Administrador</span>
+                </>
               )}
             </button>
           </form>
 
-          <div className="space-y-4">
-
-            <div className="text-center space-y-4">
-              <div className="text-sm text-muted-foreground">
-                ¿No tienes una cuenta?{' '}
-                <Link to="/register" className="font-medium text-primary hover:text-primary/80">
-                  Regístrate aquí
-                </Link>
-              </div>
-              
-              <div className="text-sm">
-                <Link to="/forgot-password" className="font-medium text-primary hover:text-primary/80">
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
+          <div className="text-center space-y-4">
+            <div className="text-sm text-muted-foreground">
+              ¿Eres estudiante?{' '}
+              <Link to="/login" className="font-medium text-primary hover:text-primary/80">
+                Inicia sesión aquí
+              </Link>
+            </div>
+            
+            <div className="text-sm">
+              <Link to="/forgot-password" className="font-medium text-primary hover:text-primary/80">
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
           </div>
         </div>
@@ -266,3 +252,4 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
+

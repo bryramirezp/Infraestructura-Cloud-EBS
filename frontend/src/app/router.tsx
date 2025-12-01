@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { LandingPage } from '@/pages/public/LandingPage';
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { AdminLoginPage } from '@/pages/auth/AdminLoginPage';
 import Dashboard from '@/pages/student/StudentDashboard';
 import { ContactPage } from '@/pages/student/ContactPage';
 import { AboutPage } from '@/pages/public/AboutPage';
@@ -31,6 +32,7 @@ export const AppRouter: React.FC = () => {
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route
           path="/contact"
           element={

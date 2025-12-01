@@ -22,6 +22,12 @@ try:
     from app.routes.usuarios import router as usuarios_router
     from app.routes.modulos import router as modulos_router
     from app.routes.cursos import router as cursos_router
+    from app.routes.lecciones import router as lecciones_router
+    from app.routes.contenidos import router as contenidos_router
+    from app.routes.evaluaciones import router as evaluaciones_router
+    from app.routes.inscripciones import router as inscripciones_router
+    from app.routes.progreso import router as progreso_router
+    from app.routes.foro import router as foro_router
 except Exception as e:
     print(f"ERROR: Failed to import routers: {e}", file=sys.stderr)
     print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
@@ -68,13 +74,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register auth router (Cognito routes: /auth/login, /auth/callback, /auth/refresh, /auth/logout)
-app.include_router(auth_router, prefix="/auth")
+# Register auth router (Cognito routes: /api/auth/login, /api/auth/callback, /api/auth/refresh, /api/auth/logout)
+# Usar prefijo /api/auth para consistencia con el frontend
+app.include_router(auth_router, prefix="/api/auth")
 
 # Register API routers (Fase 4: Usuarios, Módulos y Cursos)
 app.include_router(usuarios_router, prefix="/api")
 app.include_router(modulos_router, prefix="/api")
 app.include_router(cursos_router, prefix="/api")
+app.include_router(lecciones_router, prefix="/api")
+app.include_router(contenidos_router, prefix="/api")
+app.include_router(evaluaciones_router, prefix="/api")
+app.include_router(inscripciones_router, prefix="/api")
+app.include_router(progreso_router, prefix="/api")
+app.include_router(foro_router, prefix="/api")
 
 
 @app.exception_handler(StarletteHTTPException)

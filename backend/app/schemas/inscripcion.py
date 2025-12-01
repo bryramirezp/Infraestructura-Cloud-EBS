@@ -1,18 +1,22 @@
 from pydantic import BaseModel
 from typing import Optional
 import uuid
-from datetime import date, datetime
+from datetime import datetime, date
 from app.database.enums import EstadoInscripcion
 
 
-class InscripcionBase(BaseModel):
+class InscripcionCursoBase(BaseModel):
     usuario_id: uuid.UUID
     curso_id: uuid.UUID
-    fecha_inscripcion: date
-    estado: Optional[EstadoInscripcion] = EstadoInscripcion.ACTIVA
+    estado: Optional[EstadoInscripcion] = EstadoInscripcion.ACTIVO
+    fecha_inscripcion: Optional[datetime] = None
 
 
-class InscripcionResponse(InscripcionBase):
+class InscripcionCursoCreate(BaseModel):
+    curso_id: uuid.UUID
+
+
+class InscripcionCursoResponse(InscripcionCursoBase):
     id: uuid.UUID
     acreditado: bool
     acreditado_en: Optional[datetime] = None

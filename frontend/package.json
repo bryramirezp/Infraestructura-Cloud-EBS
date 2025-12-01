@@ -37,7 +37,9 @@
     "recharts": "^2.15.4",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.2.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "amazon-cognito-identity-js": "6.3.16",
+    "@react-pdf/renderer": "^3.1.14"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

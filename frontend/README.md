@@ -226,6 +226,48 @@ Estos estándares deben aplicarse en todos los nuevos componentes y páginas par
    
    La aplicación se abrirá en `http://localhost:5173`
 
+## ⚙️ Configuración y Variables de Entorno
+
+El frontend requiere variables de entorno para conectarse con los servicios de AWS. Crea un archivo `.env` en la raíz del proyecto `frontend/` con las siguientes variables:
+
+### Variables Requeridas para Autenticación con Cognito
+
+```env
+# Amazon Cognito Configuration
+VITE_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+VITE_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
+VITE_AWS_REGION=us-east-1
+
+# API Backend URL
+VITE_API_URL=http://localhost:5000/api
+```
+
+### Descripción de Variables
+
+- **`VITE_COGNITO_USER_POOL_ID`** (Requerido): ID del User Pool de Amazon Cognito donde están registrados los usuarios.
+  - Formato: `us-east-1_XXXXXXXXX` o similar según la región.
+  - Se obtiene de la consola de AWS Cognito.
+
+- **`VITE_COGNITO_CLIENT_ID`** (Requerido): ID del App Client configurado en Cognito para autenticación.
+  - Se obtiene de la configuración del App Client en Cognito.
+  - Debe tener habilitado el flujo de autenticación de usuario (USER_PASSWORD_AUTH).
+
+- **`VITE_AWS_REGION`** (Opcional): Región de AWS donde está configurado Cognito.
+  - Valor por defecto: `us-east-1`
+  - Ejemplos: `us-east-1`, `us-west-2`, `eu-west-1`, etc.
+
+- **`VITE_API_URL`** (Opcional): URL base del backend API.
+  - Valor por defecto: `http://localhost:8000/api`
+  - En desarrollo local: `http://localhost:5000/api` (o el puerto configurado)
+  - En producción: URL del API Gateway o del backend desplegado
+
+### Notas Importantes
+
+- Todas las variables de entorno en Vite deben comenzar con `VITE_` para ser accesibles en el código del frontend.
+- El archivo `.env` no debe subirse a git (debe estar en `.gitignore`).
+- Para producción, configura estas variables en el servicio de hosting (AWS Amplify, Vercel, etc.).
+- El App Client de Cognito debe tener configurado el flujo de autenticación `USER_PASSWORD_AUTH` para permitir login directo con email y contraseña.
+
 ## 📜 Scripts Disponibles
 
 ```bash

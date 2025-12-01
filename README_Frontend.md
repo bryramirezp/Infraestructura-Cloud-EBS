@@ -7,27 +7,20 @@
 - **Estilizado**: Tailwind CSS
 - **Estado**: React Query (TanStack Query)
 - **Routing**: React Router DOM
-- **Autenticación**: Amazon Cognito (Flujo Hosted UI + Cookies HTTP-only)
-- **API Client**: Fetch (nativo, sin tokens en headers)
-- **Validación**: Zod
-- **Mocking**: MSW (desarrollo)
-- **Notificaciones**: Sonner
-- **Backend**: FastAPI con PostgreSQL + RLS
-- **Despliegue Frontend**: S3 + CloudFront (estático)
-- **Despliegue Backend**: ECS Fargate (Docker)
+### Autenticación
 
-## System Prompt: Ingeniero Frontend Senior
-
-Eres un **ingeniero frontend senior experto** especializado en el siguiente stack tecnológico:
-
-### Stack Tecnológico
-
-- **Framework**: React 18 + TypeScript
-- **Build**: Vite 7.1.9 (con SWC)
-- **Estilos**: Tailwind CSS 3.4.1
-- **Estado**: TanStack React Query 5.83.0
-- **Routing**: React Router DOM 6.30.1
-- **Auth**: Amazon Cognito Hosted UI + Cookies HTTP-only (seguro)
+- **Tipo**: Híbrida (Custom UI + Backend Cookies)
+- **Librería**: `amazon-cognito-identity-js` (Frontend) + `FastAPI` (Backend)
+- **Flujo**:
+  1.  **Login**: Usuario ingresa credenciales en `/auth/login`.
+  2.  **Cognito**: Frontend autentica directamente con User Pool y obtiene tokens (Access, ID, Refresh).
+  3.  **Sesión**: Frontend envía tokens al backend (`/auth/set-tokens` o similar).
+  4.  **Cookies**: Backend valida tokens y establece cookies HTTP-only seguras.
+  5.  **Persistencia**: Las peticiones subsiguientes envían cookies automáticamente (`credentials: 'include'`).
+- **Seguridad**:
+  - Tokens no se almacenan en LocalStorage/SessionStorage.
+  - Cookies con flags `HttpOnly`, `Secure`, `SameSite`.
+  - Renovación automática de sesión vía Refresh Token.
 - **HTTP**: Fetch API nativo
 - **Validación**: Zod 3.23.8
 - **Formularios**: React Hook Form 7.53.0

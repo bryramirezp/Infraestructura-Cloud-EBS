@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../api/api-client';
 import { API_ENDPOINTS } from '../api/endpoints';
+import { cognitoService } from '../services/cognito-service';
 
 interface User {
   user_id: string;
   email: string;
   name: string;
-  role: 'STUDENT' | 'COORDINATOR' | 'ADMIN' | 'UNKNOWN';
+  role: 'STUDENT' | 'ADMIN' | 'UNKNOWN';
   groups: string[];
   exp: number;
 }
@@ -19,7 +20,7 @@ interface AuthState {
 }
 
 interface UseAuthReturn extends AuthState {
-  login: () => void;
+  login: (email: string, password: string, redirectPath?: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   refreshAuth: () => Promise<void>;
@@ -70,13 +71,60 @@ export const useAuth = (): UseAuthReturn => {
   };
 
   /**
-   * Iniciar sesión redirigiendo a Cognito Hosted UI
+   * Iniciar sesión con email y contraseña usando Cognito directamente
    */
-  const login = (): void => {
-    // Redirigir al endpoint /auth/login del backend
-    // Esto iniciará el flujo OAuth2 con Cognito Hosted UI
-    const apiUrl = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000/api';
-    window.location.href = `${apiUrl}${API_ENDPOINTS.AUTH.LOGIN}`;
+  const login = async (
+    email: string,
+    password: string,
+    redirectPath?: string
+  ): Promise<void> => {
+    try {
+      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+
+      // Autenticar con Cognito
+      const authResult = await cognitoService.authenticateUser(email, password);
+
+      // Enviar tokens al backend para establecer cookies
+      const userProfile = await apiClient.setAuthTokens(
+        authResult.tokens.accessToken,
+        authResult.tokens.refreshToken,
+        authResult.tokens.idToken
+      );
+
+      // Actualizar estado con perfil del usuario
+      setAuthState({
+        user: userProfile,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+
+      // Determinar ruta de redirección
+      let targetPath = redirectPath;
+      if (!targetPath) {
+        // Redirigir según rol del usuario
+        if (userProfile.role === 'STUDENT') {
+          targetPath = '/dashboard';
+        } else if (userProfile.role === 'COORDINATOR' || userProfile.role === 'ADMIN') {
+          targetPath = '/admin';
+        } else {
+          targetPath = '/dashboard';
+        }
+      }
+
+      // Redirigir a la ruta determinada
+      window.location.href = targetPath;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al iniciar sesión';
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage,
+        isAuthenticated: false,
+      }));
+      throw error;
+    }
   };
 
   /**
@@ -84,8 +132,16 @@ export const useAuth = (): UseAuthReturn => {
    */
   const logout = async (): Promise<void> => {
     try {
-      // Llamar al endpoint /auth/logout del backend
-      await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+      // Cerrar sesión en Cognito
+      await cognitoService.signOut();
+      
+      // Llamar al endpoint /auth/logout del backend para limpiar cookies
+      try {
+        await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+      } catch (error) {
+        // Si falla el logout del backend, continuar de todas formas
+        console.warn('Error al cerrar sesión en backend:', error);
+      }
       
       // Limpiar estado local
       setAuthState({

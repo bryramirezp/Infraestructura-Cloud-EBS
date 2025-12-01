@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -13,6 +13,22 @@ class IntentoBase(BaseModel):
     examen_final_id: Optional[uuid.UUID] = None
     numero_intento: int
     permitir_nuevo_intento: Optional[bool] = False
+
+
+class IntentoCreate(BaseModel):
+    quiz_id: Optional[uuid.UUID] = None
+    examen_final_id: Optional[uuid.UUID] = None
+
+
+class RespuestaIntento(BaseModel):
+    pregunta_id: uuid.UUID
+    opcion_id: Optional[uuid.UUID] = None
+    respuesta_texto: Optional[str] = None
+    respuesta_bool: Optional[bool] = None
+
+
+class IntentoEnvio(BaseModel):
+    respuestas: List[RespuestaIntento]
 
 
 class IntentoResponse(IntentoBase):

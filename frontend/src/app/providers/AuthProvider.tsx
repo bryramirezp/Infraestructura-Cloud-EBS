@@ -5,7 +5,7 @@ interface AuthContextType {
   user: any;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: () => void;
+  login: (email: string, password: string, redirectPath?: string) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
 }

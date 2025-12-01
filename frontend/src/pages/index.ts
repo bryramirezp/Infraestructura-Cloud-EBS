@@ -2,6 +2,7 @@
 export { LandingPage as HomePage } from './public/HomePage';
 export { AboutPage } from './public/AboutPage';
 export { LoginPage } from './auth/LoginPage';
+export { AdminLoginPage } from './auth/AdminLoginPage';
 export { default as StudentDashboard } from './student/StudentDashboard';
 export { default as CoursesPage } from './student/Courses';
 export { default as CalendarPage } from './student/Calendar';
