@@ -19,4 +19,7 @@ export interface Certificado {
   valido: boolean;
   creado_en: string;
   actualizado_en: string;
+  // Campos extendidos para UI
+  curso_nombre?: string;
+  usuario_nombre?: string;
 }

@@ -16,8 +16,33 @@ except Exception as e:
     print(f"ERROR: Failed to import settings: {e}", file=sys.stderr)
     sys.exit(1)
 
+<<<<<<< HEAD
+# Importar routers con manejo de errores
+try:
+    from app.routes.auth_routes import router as auth_router
+    from app.routes.usuarios import router as usuarios_router
+    from app.routes.modulos import router as modulos_router
+    from app.routes.cursos import router as cursos_router
+    from app.routes.lecciones import router as lecciones_router
+    from app.routes.contenidos import router as contenidos_router
+    from app.routes.evaluaciones import router as evaluaciones_router
+    from app.routes.inscripciones import router as inscripciones_router
+    from app.routes.progreso import router as progreso_router
+    from app.routes.foro import router as foro_router
+except Exception as e:
+    print(f"ERROR: Failed to import routers: {e}", file=sys.stderr)
+    print(f"Traceback: {traceback.format_exc()}", file=sys.stderr)
+    sys.exit(1)
+
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+=======
 # Configurar logging al inicio
 setup_logging()
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +97,10 @@ app.add_middleware(
 )
 
 # Register auth router (Cognito routes: /api/auth/login, /api/auth/callback, /api/auth/refresh, /api/auth/logout)
+<<<<<<< HEAD
+# Usar prefijo /api/auth para consistencia con el frontend
+=======
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
 app.include_router(auth_router, prefix="/api/auth")
 
 # Register API routers (Fase 4: Usuarios, Módulos y Cursos; Fase 5: Lecciones; Fase 6: Quizzes y Exámenes; Fase 7: Inscripciones y Progreso; Fase 9: Foro y Preferencias)
@@ -79,6 +108,13 @@ app.include_router(usuarios_router, prefix="/api")
 app.include_router(modulos_router, prefix="/api")
 app.include_router(cursos_router, prefix="/api")
 app.include_router(lecciones_router, prefix="/api")
+<<<<<<< HEAD
+app.include_router(contenidos_router, prefix="/api")
+app.include_router(evaluaciones_router, prefix="/api")
+app.include_router(inscripciones_router, prefix="/api")
+app.include_router(progreso_router, prefix="/api")
+app.include_router(foro_router, prefix="/api")
+=======
 app.include_router(quizzes_router, prefix="/api")
 app.include_router(examenes_finales_router, prefix="/api")
 app.include_router(inscripciones_router, prefix="/api")
@@ -125,6 +161,7 @@ async def ebs_exception_handler(request: Request, exc: EBSException):
         status_code=exc.status_code,
         content=content
     )
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
 
 
 @app.exception_handler(StarletteHTTPException)

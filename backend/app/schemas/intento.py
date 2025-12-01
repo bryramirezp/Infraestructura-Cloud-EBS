@@ -15,6 +15,22 @@ class IntentoBase(BaseModel):
     permitir_nuevo_intento: Optional[bool] = False
 
 
+class IntentoCreate(BaseModel):
+    quiz_id: Optional[uuid.UUID] = None
+    examen_final_id: Optional[uuid.UUID] = None
+
+
+class RespuestaIntento(BaseModel):
+    pregunta_id: uuid.UUID
+    opcion_id: Optional[uuid.UUID] = None
+    respuesta_texto: Optional[str] = None
+    respuesta_bool: Optional[bool] = None
+
+
+class IntentoEnvio(BaseModel):
+    respuestas: List[RespuestaIntento]
+
+
 class IntentoResponse(IntentoBase):
     id: uuid.UUID
     puntaje: Optional[Decimal] = None

@@ -15,7 +15,32 @@ export const API_ENDPOINTS = {
     CALLBACK: '/auth/callback',  // Callback de Cognito con tokens
     REFRESH: '/auth/refresh',   // Refresh tokens
     TOKENS: '/auth/tokens',     // Obtener tokens del usuario actual (opcional)
+<<<<<<< HEAD
+    PROFILE: '/auth/profile',    // Perfil del usuario autenticado
+    SET_TOKENS: '/auth/set-tokens', // Enviar tokens al backend para establecer cookies
+  },
+
+  // Certificados
+  CERTIFICADOS: {
+    BASE: '/certificados',
+    BY_ID: (id: string) => `/certificados/${id}`,
+    BY_USUARIO: (usuarioId: string) => `/certificados/usuario/${usuarioId}`,
+    BY_INSCRIPCION: (inscripcionId: string) => `/certificados/inscripcion/${inscripcionId}`,
+    VERIFICAR: (hash: string) => `/certificados/verificar/${hash}`,
+    DESCARGAR: (id: string) => `/certificados/${id}/download`,
+    GENERAR: (inscripcionId: string) => `/certificados/generar/${inscripcionId}`,
+  },
+
+  // Notificaciones
+  NOTIFICACIONES: {
+    BASE: '/notificaciones',
+    BY_ID: (id: string) => `/notificaciones/${id}`,
+    BY_USUARIO: (usuarioId: string) => `/notificaciones/usuario/${usuarioId}`,
+    MARCAR_LEIDA: (id: string) => `/notificaciones/${id}/leida`,
+    MARCAR_TODAS_LEIDAS: '/notificaciones/marcar-todas-leidas',
+=======
     SET_TOKENS: '/auth/set-tokens', // Enviar tokens al backend para establecer cookies (solo desarrollo)
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
   },
 
   // Módulos

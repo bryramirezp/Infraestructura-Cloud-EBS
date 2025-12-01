@@ -1,19 +1,52 @@
 import logging
 import uuid
+<<<<<<< HEAD
+from typing import List
+
+from sqlalchemy import select
+=======
 from typing import List, Optional
 
 from sqlalchemy import select, and_, delete
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import models
+<<<<<<< HEAD
+from app.utils.exceptions import NotFoundError
+=======
 from app.database.enums import EstadoInscripcion
 from app.utils.exceptions import NotFoundError, AuthorizationError, BusinessRuleError
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
 
 logger = logging.getLogger(__name__)
 
 
 class ForoService:
+<<<<<<< HEAD
+    """Lógica de negocio para el foro."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def list_comentarios(self, leccion_id: uuid.UUID) -> List[models.ForoComentario]:
+        stmt = (
+            select(models.ForoComentario)
+            .options(selectinload(models.ForoComentario.usuario))
+            .where(models.ForoComentario.leccion_id == leccion_id)
+            .order_by(models.ForoComentario.creado_en.asc())
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
+
+    async def create_comentario(self, data: dict) -> models.ForoComentario:
+        comentario = models.ForoComentario(**data)
+        self.db.add(comentario)
+        await self.db.commit()
+        await self.db.refresh(comentario)
+        return comentario
+=======
 	"""Lógica de negocio para comentarios en foro."""
 
 	def __init__(self, db: AsyncSession):
@@ -185,3 +218,4 @@ class ForoService:
 		await self.db.commit()
 		logger.info("Comentario %s eliminado", comentario_id)
 
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9

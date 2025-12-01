@@ -1,6 +1,6 @@
 /**
  * Entidad: Notificación
- * Preferencias de notificación de usuarios
+ * Sistema de notificaciones para usuarios
  */
 
 /**
@@ -15,3 +15,16 @@ export interface PreferenciaNotificacion {
   actualizado_en: string;
 }
 
+/**
+ * Notificación individual
+ */
+export interface Notificacion {
+  id: string; // UUID
+  usuario_id: string;
+  tipo: 'info' | 'success' | 'warning' | 'error';
+  titulo: string;
+  mensaje: string;
+  leida: boolean;
+  link?: string | null;
+  creado_en: string;
+}

@@ -232,6 +232,54 @@ class APIClient {
     }, true);
   }
 
+  async setAuthTokens(accessToken: string, refreshToken: string, idToken: string) {
+    return this.post(API_ENDPOINTS.AUTH.SET_TOKENS, {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      id_token: idToken,
+    });
+  }
+
+  // Certificados API
+  async getCertificadoById(certificadoId: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.BY_ID(certificadoId));
+  }
+
+  async getCertificadosByUsuario(usuarioId: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.BY_USUARIO(usuarioId));
+  }
+
+  async getCertificadoByInscripcion(inscripcionId: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.BY_INSCRIPCION(inscripcionId));
+  }
+
+  async verificarCertificado(hash: string) {
+    return this.get(API_ENDPOINTS.CERTIFICADOS.VERIFICAR(hash));
+  }
+
+  async descargarCertificado(certificadoId: string) {
+    // Retorna la URL prefirmada o el blob directamente, depende del backend implementation plan
+    // Asumiremos que retorna un objeto con la URL por ahora para mantener consistencia JSON
+    return this.get(API_ENDPOINTS.CERTIFICADOS.DESCARGAR(certificadoId));
+  }
+
+  async generarCertificado(inscripcionId: string) {
+    return this.post(API_ENDPOINTS.CERTIFICADOS.GENERAR(inscripcionId), {});
+  }
+
+  // Notificaciones API
+  async getNotificacionesByUsuario(usuarioId: string) {
+    return this.get(API_ENDPOINTS.NOTIFICACIONES.BY_USUARIO(usuarioId));
+  }
+
+  async marcarNotificacionLeida(notificacionId: string) {
+    return this.patch(API_ENDPOINTS.NOTIFICACIONES.MARCAR_LEIDA(notificacionId), {});
+  }
+
+  async marcarTodasNotificacionesLeidas() {
+    return this.post(API_ENDPOINTS.NOTIFICACIONES.MARCAR_TODAS_LEIDAS, {});
+  }
+
   // Módulos API
   async getModulos(filters?: { publicado?: boolean }) {
     return this.get(API_ENDPOINTS.MODULOS.BASE, filters);

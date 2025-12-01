@@ -21,10 +21,17 @@ class ForoComentarioUpdate(BaseModel):
     contenido: str = Field(..., min_length=1, max_length=5000, description="Nuevo contenido del comentario")
 
 
+class ForoComentarioCreate(BaseModel):
+    leccion_id: uuid.UUID
+    contenido: str
+
+
 class ForoComentarioResponse(ForoComentarioBase):
     id: uuid.UUID
     creado_en: Optional[datetime]
     actualizado_en: Optional[datetime]
+    usuario_nombre: Optional[str] = None # Para mostrar nombre del usuario
+    usuario_apellido: Optional[str] = None
 
     class Config:
         from_attributes = True

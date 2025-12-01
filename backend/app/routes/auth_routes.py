@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request, status, Body
 from fastapi.responses import RedirectResponse, JSONResponse
+from pydantic import BaseModel
 import jwt
 from jwt.exceptions import InvalidTokenError, DecodeError
 import secrets
@@ -12,6 +13,13 @@ from app.utils.roles import get_user_role, UserRole
 
 router = APIRouter()
 service = CognitoService()
+
+
+class SetTokensRequest(BaseModel):
+    """Request model for setting tokens"""
+    access_token: str
+    refresh_token: str
+    id_token: str
 
 
 def _pkce_cookie_name(state: str) -> str:
@@ -356,9 +364,116 @@ async def get_tokens(request: Request):
 
 
 @router.post("/set-tokens")
+<<<<<<< HEAD
+async def set_tokens(request: Request, tokens: SetTokensRequest = Body(...)):
+    """Receive tokens from frontend and set them as HTTP-only cookies.
+    
+    This endpoint is used when the frontend authenticates directly with Cognito
+    and needs to send the tokens to the backend to establish a session.
+    """
+    access_token = tokens.access_token
+    refresh_token = tokens.refresh_token
+    id_token = tokens.id_token
+    
+    # Validate access token
+    try:
+        public_key = await get_rsa_key(access_token)
+        payload = jwt.decode(
+            access_token,
+            public_key,
+            algorithms=["RS256"],
+            audience=None,
+            issuer=settings.cognito_issuer,
+            options={"verify_signature": True, "verify_aud": False, "verify_exp": True},
+        )
+    except (InvalidTokenError, DecodeError) as e:
+        raise AuthenticationError(f"Invalid access token: {str(e)}")
+    except Exception as e:
+        raise AuthenticationError(f"Error validating token: {str(e)}")
+    
+    # Optionally validate id_token (same user, same issuer)
+    try:
+        id_public_key = await get_rsa_key(id_token)
+        id_payload = jwt.decode(
+            id_token,
+            id_public_key,
+            algorithms=["RS256"],
+            audience=settings.cognito_client_id,
+            issuer=settings.cognito_issuer,
+            options={"verify_signature": True, "verify_aud": True, "verify_exp": True},
+        )
+        # Verify that both tokens belong to the same user
+        if id_payload.get("sub") != payload.get("sub"):
+            raise AuthenticationError("Token user mismatch")
+    except (InvalidTokenError, DecodeError) as e:
+        # ID token validation is optional but recommended
+        # Log warning but don't fail the request
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"ID token validation failed: {str(e)}")
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Error validating ID token: {str(e)}")
+    
+    # Get user role from token
+    role = get_user_role(payload)
+    
+    # Create response with user profile
+    response = JSONResponse({
+        "user_id": payload.get("sub"),
+        "email": payload.get("email"),
+        "name": payload.get("name"),
+        "role": role.value if role else "UNKNOWN",
+        "groups": payload.get("cognito:groups", []),
+        "exp": payload.get("exp"),
+    })
+    
+    # Set HTTP-only cookies
+    if refresh_token:
+        response.set_cookie(
+            "refresh_token",
+            refresh_token,
+            max_age=settings.cookie_refresh_max_age,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            domain=settings.cookie_domain,
+        )
+    
+    response.set_cookie(
+        "access_token",
+        access_token,
+        max_age=settings.cookie_access_max_age,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+    )
+    
+    if id_token:
+        response.set_cookie(
+            "id_token",
+            id_token,
+            max_age=settings.cookie_access_max_age,
+            httponly=True,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            domain=settings.cookie_domain,
+        )
+    
+    return response
+
+
+@router.get("/profile")
+async def get_profile(request: Request):
+    """Get current user profile from access token."""
+    access_token = request.cookies.get("access_token")
+=======
 async def set_tokens(request: Request):
     """Set authentication tokens as HTTP-only cookies from request body.
     Used when frontend authenticates directly with Cognito (e.g., NEW_PASSWORD_REQUIRED flow).
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
     
     WARNING: This endpoint is a security risk and should only be used in development.
     In production, tokens should only be set via the /callback endpoint.

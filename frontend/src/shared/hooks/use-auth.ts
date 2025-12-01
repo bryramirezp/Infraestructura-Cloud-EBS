@@ -1,14 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../api/api-client';
 import { API_ENDPOINTS } from '../api/endpoints';
+<<<<<<< HEAD
+import { cognitoService } from '../services/cognito-service';
+=======
 import { cognitoService } from '../auth/cognito-service';
+<<<<<<< HEAD
 import { extractUserInfoFromIdToken, type AppRole } from '../auth/cognito-roles';
+=======
+import { extractUserInfoFromIdToken, APP_ROLES, type AppRole } from '../auth/cognito-roles';
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
+>>>>>>> b9b499e4c8185222bc3ff5b410bb7768b470c666
 
 interface User {
   user_id: string;
   email: string;
   name: string;
+<<<<<<< HEAD
+  role: 'STUDENT' | 'ADMIN' | 'UNKNOWN';
+=======
   role: AppRole;
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
   groups: string[];
   exp: number;
 }
@@ -198,12 +210,15 @@ export const useAuth = () => {
 
   /**
    * Iniciar sesión con email y contraseña usando Cognito directamente
+<<<<<<< HEAD
+=======
    * 
    * NOTA: Este método ya no se usa con Cognito Hosted UI (PKCE flow).
    * Se mantiene por compatibilidad, pero el flujo recomendado es usar
    * Cognito Hosted UI a través de /api/auth/login
    * 
    * @deprecated Use Cognito Hosted UI instead (redirect to /api/auth/login)
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
    */
   const login = async (
   email: string,
@@ -216,12 +231,111 @@ export const useAuth = () => {
     // Autenticar con Cognito
     const authResult = await cognitoService.authenticateUser(email, password);
 
+<<<<<<< HEAD
     // Si se requiere nueva contraseña, Cognito Hosted UI lo maneja automáticamente
     // Este flujo solo aplica si se usa login directo (no recomendado)
     if (authResult.challengeName === 'NEW_PASSWORD_REQUIRED') {
       throw new Error(
         'Se requiere cambio de contraseña. Por favor usa Cognito Hosted UI para completar este proceso.'
       );
+=======
+<<<<<<< HEAD
+=======
+      // Si se requiere nueva contraseña, Cognito Hosted UI lo maneja automáticamente
+      // Este flujo solo aplica si se usa login directo (no recomendado)
+      if (authResult.challengeName === 'NEW_PASSWORD_REQUIRED') {
+        throw new Error(
+          'Se requiere cambio de contraseña. Por favor usa Cognito Hosted UI para completar este proceso.'
+        );
+      }
+
+      // Si no hay tokens, lanzar error
+      if (!authResult.tokens) {
+        throw new Error('No se recibieron tokens de autenticación');
+      }
+
+      // Almacenar ID token temporalmente en sessionStorage para lectura posterior
+      // (solo para lectura de grupos, no para autenticación)
+      try {
+        sessionStorage.setItem('id_token_temp', authResult.tokens.idToken);
+      } catch (storageError) {
+        console.warn('Could not store ID token temporarily:', storageError);
+      }
+
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
+      // Enviar tokens al backend para establecer cookies
+      const userProfile = await apiClient.setAuthTokens(
+        authResult.tokens.accessToken,
+        authResult.tokens.refreshToken,
+        authResult.tokens.idToken
+      );
+
+<<<<<<< HEAD
+      // Actualizar estado con perfil del usuario
+      setAuthState({
+        user: userProfile,
+=======
+      // Si el backend no devuelve grupos o rol, extraer del ID token
+      let finalProfile = userProfile;
+      if ((!userProfile.groups || userProfile.groups.length === 0 || userProfile.role === 'UNKNOWN') && userProfile.role !== 'ADMIN' && userProfile.role !== 'STUDENT' && userProfile.role !== 'COORDINATOR') {
+        const idTokenInfo = await extractRoleFromIdToken(authResult.tokens.idToken);
+        if (idTokenInfo) {
+          finalProfile = {
+            ...userProfile,
+            role: idTokenInfo.role || userProfile.role,
+            groups: idTokenInfo.groups || userProfile.groups,
+          };
+        }
+      }
+
+      // Limpiar ID token temporal después de usarlo
+      try {
+        sessionStorage.removeItem('id_token_temp');
+      } catch (storageError) {
+        // Ignorar errores al limpiar
+      }
+
+      // Actualizar estado con perfil del usuario
+      setAuthState({
+        user: finalProfile,
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+
+      // Determinar ruta de redirección
+      let targetPath = redirectPath;
+      if (!targetPath) {
+        // Redirigir según rol del usuario
+<<<<<<< HEAD
+        if (userProfile.role === 'STUDENT') {
+          targetPath = '/dashboard';
+        } else if (userProfile.role === 'COORDINATOR' || userProfile.role === 'ADMIN') {
+=======
+        if (finalProfile.role === APP_ROLES.STUDENT) {
+          targetPath = '/dashboard';
+        } else if (finalProfile.role === APP_ROLES.COORDINATOR || finalProfile.role === APP_ROLES.ADMIN) {
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
+          targetPath = '/admin';
+        } else {
+          targetPath = '/dashboard';
+        }
+      }
+
+      // Redirigir a la ruta determinada
+      window.location.href = targetPath;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al iniciar sesión';
+      setAuthState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage,
+        isAuthenticated: false,
+      }));
+      throw error;
+>>>>>>> b9b499e4c8185222bc3ff5b410bb7768b470c666
     }
 
     // Si no hay tokens, lanzar error
@@ -322,7 +436,47 @@ export const useAuth = () => {
     // El endpoint está bajo /api/auth según el router del backend
     // useBaseUrl: false (default) construye: {API_URL}/auth/logout = http://localhost:8000/api/auth/logout
     try {
+<<<<<<< HEAD
       await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+=======
+<<<<<<< HEAD
+      // Cerrar sesión en Cognito
+      await cognitoService.signOut();
+=======
+      // Obtener access token del estado o sessionStorage para cerrar sesión en Cognito
+      // Nota: En SDK v3 necesitamos el access token para signOut
+      // Por ahora, solo cerramos sesión en el backend
+      // Si necesitamos cerrar en Cognito, necesitaríamos almacenar el access token
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
+      
+      // Llamar al endpoint /auth/logout del backend para limpiar cookies
+      try {
+        await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+      } catch (error) {
+        // Si falla el logout del backend, continuar de todas formas
+        console.warn('Error al cerrar sesión en backend:', error);
+      }
+<<<<<<< HEAD
+=======
+      
+      // Limpiar estado local y almacenamiento temporal
+      try {
+        sessionStorage.removeItem('id_token_temp');
+      } catch (storageError) {
+        // Ignorar errores al limpiar
+      }
+>>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
+      
+      setAuthState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+      
+      // Redirigir a la página de login
+      window.location.href = '/';
+>>>>>>> b9b499e4c8185222bc3ff5b410bb7768b470c666
     } catch (error) {
       // Si falla el logout del backend, continuar de todas formas
       console.warn('Error al cerrar sesión en backend:', error);
