@@ -4,12 +4,6 @@ import { Layout } from '@/widgets/layout/Layout';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { LandingPage } from '@/pages/public/LandingPage';
-<<<<<<< HEAD
-import { LoginPage } from '@/pages/auth/LoginPage';
-import { AdminLoginPage } from '@/pages/auth/AdminLoginPage';
-=======
-// Auth pages removed - using Cognito Hosted UI instead
->>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
 import Dashboard from '@/pages/student/StudentDashboard';
 import { ContactPage } from '@/pages/student/ContactPage';
 import { AboutPage } from '@/pages/public/AboutPage';
@@ -80,10 +74,6 @@ export const AppRouter: React.FC = () => {
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
-<<<<<<< HEAD
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-=======
         {/* 
           Login routes - redirect to backend which handles Cognito Hosted UI
           The backend /api/auth/login endpoint generates PKCE URL and redirects to Cognito
@@ -104,7 +94,6 @@ export const AppRouter: React.FC = () => {
           path="/auth/callback" 
           element={<CognitoCallback />} 
         />
->>>>>>> 50bb6094d50d71301466789ca430ba62ffdca6f9
         <Route
           path="/contact"
           element={
