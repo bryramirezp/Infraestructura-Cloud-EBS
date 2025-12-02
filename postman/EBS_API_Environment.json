@@ -1,0 +1,134 @@
+{
+	"id": "ebs-api-env-001",
+	"name": "EBS API - Development",
+	"values": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "api_base",
+			"value": "{{base_url}}/api",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "id_token",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "usuario_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "curso_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "modulo_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "leccion_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "quiz_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "examen_final_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "inscripcion_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "intento_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "comentario_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "certificado_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "regla_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "pregunta_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "opcion_id",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "code",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "state",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "code_verifier",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment"
+}
+

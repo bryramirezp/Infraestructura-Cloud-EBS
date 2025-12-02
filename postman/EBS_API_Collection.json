@@ -1,0 +1,1829 @@
+{
+	"info": {
+		"_postman_id": "ebs-api-collection-001",
+		"name": "EBS API - FastAPI Backend",
+		"description": "Colección completa de endpoints para la API de Escuela Bíblica Salem. Incluye autenticación con Cognito mediante cookies HTTP-only.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Iniciar flujo de autenticación PKCE con Cognito Hosted UI. Redirige al usuario a Cognito para autenticarse."
+					},
+					"response": []
+				},
+				{
+					"name": "Callback GET",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/callback?code={{code}}&state={{state}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "callback"],
+							"query": [
+								{
+									"key": "code",
+									"value": "{{code}}",
+									"description": "Authorization code de Cognito"
+								},
+								{
+									"key": "state",
+									"value": "{{state}}",
+									"description": "State parameter para validación"
+								}
+							]
+						},
+						"description": "Handle OAuth2 callback desde Cognito (GET). Intercambia code por tokens y establece cookies HTTP-only."
+					},
+					"response": []
+				},
+				{
+					"name": "Callback POST",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"{{code}}\",\n  \"state\": \"{{state}}\",\n  \"code_verifier\": \"{{code_verifier}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/callback?code={{code}}&state={{state}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "callback"],
+							"query": [
+								{
+									"key": "code",
+									"value": "{{code}}"
+								},
+								{
+									"key": "state",
+									"value": "{{state}}"
+								}
+							]
+						},
+						"description": "Handle OAuth2 callback desde frontend (POST). Permite enviar code_verifier en el body."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "refresh"]
+						},
+						"description": "Refrescar access token usando refresh token almacenado en cookies HTTP-only."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response has status ok\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql(\"ok\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout"]
+						},
+						"description": "Cerrar sesión. Elimina todas las cookies de autenticación."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response indicates logout\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql(\"logged_out\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Tokens",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/tokens",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "tokens"]
+						},
+						"description": "Obtener tokens actuales desde cookies HTTP-only. Útil para debugging."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response contains tokens\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"access_token\");",
+									"    pm.expect(jsonData).to.have.property(\"user_info\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Set Tokens",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"access_token\": \"{{access_token}}\",\n  \"refresh_token\": \"{{refresh_token}}\",\n  \"id_token\": \"{{id_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/set-tokens",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "set-tokens"]
+						},
+						"description": "Establecer tokens manualmente (solo desarrollo). Recibe tokens de Cognito y los establece como cookies HTTP-only."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response contains user info\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"user_id\");",
+									"    pm.expect(jsonData).to.have.property(\"email\");",
+									"    pm.expect(jsonData).to.have.property(\"role\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			],
+			"description": "Endpoints de autenticación con AWS Cognito mediante PKCE flow"
+		},
+		{
+			"name": "Health & Root",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Health check endpoint para verificar que el servidor está funcionando."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response indicates ok status\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql(\"ok\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Root",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						},
+						"description": "Endpoint raíz que retorna información básica de la API."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response contains API info\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\");",
+									"    pm.expect(jsonData).to.have.property(\"version\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Usuarios",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "me"]
+						},
+						"description": "Obtener perfil del usuario autenticado. Requiere autenticación."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response contains user profile\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"id\");",
+									"    pm.expect(jsonData).to.have.property(\"email\");",
+									"    pm.expect(jsonData).to.have.property(\"nombre\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Pérez\",\n  \"avatar_url\": \"https://example.com/avatar.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "me"]
+						},
+						"description": "Actualizar perfil del usuario autenticado. Requiere autenticación."
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response contains updated profile\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"id\");",
+									"    pm.expect(jsonData).to.have.property(\"nombre\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Usuario By Id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/{{usuario_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios", "{{usuario_id}}"],
+							"variable": [
+								{
+									"key": "usuario_id",
+									"value": "",
+									"description": "UUID del usuario"
+								}
+							]
+						},
+						"description": "Obtener usuario por ID. Requiere rol de administrador o coordinador."
+					},
+					"response": []
+				},
+				{
+					"name": "List Usuarios",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios?skip=0&limit=100",
+							"host": ["{{base_url}}"],
+							"path": ["api", "usuarios"],
+							"query": [
+								{
+									"key": "skip",
+									"value": "0",
+									"description": "Número de registros a omitir"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Número máximo de registros"
+								}
+							]
+						},
+						"description": "Listar usuarios con paginación. Requiere rol de administrador."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de usuarios"
+		},
+		{
+			"name": "Modulos",
+			"item": [
+				{
+					"name": "List Modulos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/modulos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "modulos"]
+						},
+						"description": "Listar todos los módulos disponibles."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Modulo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"titulo\": \"Módulo de Ejemplo\",\n  \"fecha_inicio\": \"2025-01-01\",\n  \"fecha_fin\": \"2025-12-31\",\n  \"publicado\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/modulos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "modulos"]
+						},
+						"description": "Crear un nuevo módulo. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Modulo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/modulos/{{modulo_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "modulos", "{{modulo_id}}"],
+							"variable": [
+								{
+									"key": "modulo_id",
+									"value": "",
+									"description": "UUID del módulo"
+								}
+							]
+						},
+						"description": "Obtener un módulo por ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Modulo",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"titulo\": \"Módulo Actualizado\",\n  \"fecha_inicio\": \"2025-01-01\",\n  \"fecha_fin\": \"2025-12-31\",\n  \"publicado\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/modulos/{{modulo_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "modulos", "{{modulo_id}}"],
+							"variable": [
+								{
+									"key": "modulo_id",
+									"value": "",
+									"description": "UUID del módulo"
+								}
+							]
+						},
+						"description": "Actualizar un módulo existente. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "List Cursos By Modulo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/modulos/{{modulo_id}}/cursos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "modulos", "{{modulo_id}}", "cursos"],
+							"variable": [
+								{
+									"key": "modulo_id",
+									"value": "",
+									"description": "UUID del módulo"
+								}
+							]
+						},
+						"description": "Listar cursos asociados a un módulo."
+					},
+					"response": []
+				},
+				{
+					"name": "List Lecciones By Modulo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/modulos/{{modulo_id}}/lecciones?publicado=true",
+							"host": ["{{base_url}}"],
+							"path": ["api", "modulos", "{{modulo_id}}", "lecciones"],
+							"query": [
+								{
+									"key": "publicado",
+									"value": "true",
+									"description": "Filtrar por estado publicado (opcional)",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "modulo_id",
+									"value": "",
+									"description": "UUID del módulo"
+								}
+							]
+						},
+						"description": "Listar lecciones de un módulo. Filtra lecciones no publicadas si el usuario no está inscrito."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de módulos"
+		},
+		{
+			"name": "Cursos",
+			"item": [
+				{
+					"name": "List Cursos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cursos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos"]
+						},
+						"description": "Listar todos los cursos disponibles."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Curso",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"titulo\": \"Curso de Ejemplo\",\n  \"descripcion\": \"Descripción del curso\",\n  \"publicado\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cursos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos"]
+						},
+						"description": "Crear un nuevo curso. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Curso",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/{{curso_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "{{curso_id}}"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Obtener un curso por ID con detalles completos."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Curso",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"titulo\": \"Curso Actualizado\",\n  \"descripcion\": \"Nueva descripción\",\n  \"publicado\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/cursos/{{curso_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "{{curso_id}}"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Actualizar un curso existente. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Guias Estudio",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/{{curso_id}}/guias-estudio",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "{{curso_id}}", "guias-estudio"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Obtener guías de estudio asociadas a un curso."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Examen Final Curso",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/{{curso_id}}/examen-final",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "{{curso_id}}", "examen-final"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Obtener examen final asociado a un curso."
+					},
+					"response": []
+				},
+				{
+					"name": "List Modulos By Curso",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/cursos/{{curso_id}}/modulos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "cursos", "{{curso_id}}", "modulos"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Listar módulos asociados a un curso."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de cursos"
+		},
+		{
+			"name": "Lecciones",
+			"item": [
+				{
+					"name": "Get Leccion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/lecciones/{{leccion_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lecciones", "{{leccion_id}}"],
+							"variable": [
+								{
+									"key": "leccion_id",
+									"value": "",
+									"description": "UUID de la lección"
+								}
+							]
+						},
+						"description": "Obtener una lección por ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Leccion",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"titulo\": \"Lección Actualizada\",\n  \"orden\": 1,\n  \"publicado\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/lecciones/{{leccion_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lecciones", "{{leccion_id}}"],
+							"variable": [
+								{
+									"key": "leccion_id",
+									"value": "",
+									"description": "UUID de la lección"
+								}
+							]
+						},
+						"description": "Actualizar una lección existente. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Contenido Leccion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/lecciones/{{leccion_id}}/contenido",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lecciones", "{{leccion_id}}", "contenido"],
+							"variable": [
+								{
+									"key": "leccion_id",
+									"value": "",
+									"description": "UUID de la lección"
+								}
+							]
+						},
+						"description": "Obtener contenido de una lección."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Leccion",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"modulo_id\": \"{{modulo_id}}\",\n  \"titulo\": \"Nueva Lección\",\n  \"orden\": 1,\n  \"publicado\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/lecciones",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lecciones"]
+						},
+						"description": "Crear una nueva lección. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Quiz By Leccion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/lecciones/{{leccion_id}}/quiz",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lecciones", "{{leccion_id}}", "quiz"],
+							"variable": [
+								{
+									"key": "leccion_id",
+									"value": "",
+									"description": "UUID de la lección"
+								}
+							]
+						},
+						"description": "Obtener quiz asociado a una lección."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de lecciones"
+		},
+		{
+			"name": "Quizzes",
+			"item": [
+				{
+					"name": "Get Quiz",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{quiz_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "quizzes", "{{quiz_id}}"],
+							"variable": [
+								{
+									"key": "quiz_id",
+									"value": "",
+									"description": "UUID del quiz"
+								}
+							]
+						},
+						"description": "Obtener un quiz por ID con todas sus preguntas y opciones."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Intento Quiz",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"quiz_id\": \"{{quiz_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{quiz_id}}/intentos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "quizzes", "{{quiz_id}}", "intentos"],
+							"variable": [
+								{
+									"key": "quiz_id",
+									"value": "",
+									"description": "UUID del quiz"
+								}
+							]
+						},
+						"description": "Crear un nuevo intento de quiz. Requiere autenticación e inscripción en el curso."
+					},
+					"response": []
+				},
+				{
+					"name": "List Intentos Quiz",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{quiz_id}}/intentos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "quizzes", "{{quiz_id}}", "intentos"],
+							"variable": [
+								{
+									"key": "quiz_id",
+									"value": "",
+									"description": "UUID del quiz"
+								}
+							]
+						},
+						"description": "Listar intentos de un quiz. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Intento Quiz",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"respuestas\": [\n    {\n      \"pregunta_id\": \"{{pregunta_id}}\",\n      \"opcion_id\": \"{{opcion_id}}\",\n      \"respuesta_texto\": null,\n      \"respuesta_bool\": null\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/quizzes/{{quiz_id}}/intentos/{{intento_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "quizzes", "{{quiz_id}}", "intentos", "{{intento_id}}"],
+							"variable": [
+								{
+									"key": "quiz_id",
+									"value": "",
+									"description": "UUID del quiz"
+								},
+								{
+									"key": "intento_id",
+									"value": "",
+									"description": "UUID del intento"
+								}
+							]
+						},
+						"description": "Actualizar un intento de quiz enviando respuestas. Requiere autenticación."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de quizzes e intentos"
+		},
+		{
+			"name": "Examenes Finales",
+			"item": [
+				{
+					"name": "Get Examen Final",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/examenes-finales/{{examen_final_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes-finales", "{{examen_final_id}}"],
+							"variable": [
+								{
+									"key": "examen_final_id",
+									"value": "",
+									"description": "UUID del examen final"
+								}
+							]
+						},
+						"description": "Obtener un examen final por ID con todas sus preguntas y opciones."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Intento Examen",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"examen_final_id\": \"{{examen_final_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/examenes-finales/{{examen_final_id}}/intentos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes-finales", "{{examen_final_id}}", "intentos"],
+							"variable": [
+								{
+									"key": "examen_final_id",
+									"value": "",
+									"description": "UUID del examen final"
+								}
+							]
+						},
+						"description": "Crear un nuevo intento de examen final. Requiere autenticación e inscripción en el curso."
+					},
+					"response": []
+				},
+				{
+					"name": "List Intentos Examen",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/examenes-finales/{{examen_final_id}}/intentos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes-finales", "{{examen_final_id}}", "intentos"],
+							"variable": [
+								{
+									"key": "examen_final_id",
+									"value": "",
+									"description": "UUID del examen final"
+								}
+							]
+						},
+						"description": "Listar intentos de un examen final. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Intento Examen",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"respuestas\": [\n    {\n      \"pregunta_id\": \"{{pregunta_id}}\",\n      \"opcion_id\": \"{{opcion_id}}\",\n      \"respuesta_texto\": null,\n      \"respuesta_bool\": null\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/examenes-finales/{{examen_final_id}}/intentos/{{intento_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "examenes-finales", "{{examen_final_id}}", "intentos", "{{intento_id}}"],
+							"variable": [
+								{
+									"key": "examen_final_id",
+									"value": "",
+									"description": "UUID del examen final"
+								},
+								{
+									"key": "intento_id",
+									"value": "",
+									"description": "UUID del intento"
+								}
+							]
+						},
+						"description": "Actualizar un intento de examen final enviando respuestas. Requiere autenticación."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de exámenes finales e intentos"
+		},
+		{
+			"name": "Inscripciones",
+			"item": [
+				{
+					"name": "Create Inscripcion",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"curso_id\": \"{{curso_id}}\",\n  \"fecha_inscripcion\": \"2025-01-01\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/inscripciones",
+							"host": ["{{base_url}}"],
+							"path": ["api", "inscripciones"]
+						},
+						"description": "Inscribirse a un curso. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "List Inscripciones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/inscripciones",
+							"host": ["{{base_url}}"],
+							"path": ["api", "inscripciones"]
+						},
+						"description": "Listar inscripciones del usuario autenticado o todas (si es admin). Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Inscripcion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/inscripciones/{{inscripcion_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "inscripciones", "{{inscripcion_id}}"],
+							"variable": [
+								{
+									"key": "inscripcion_id",
+									"value": "",
+									"description": "UUID de la inscripción"
+								}
+							]
+						},
+						"description": "Obtener una inscripción por ID. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Inscripcion Estado",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estado\": \"PAUSADA\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/inscripciones/{{inscripcion_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "inscripciones", "{{inscripcion_id}}"],
+							"variable": [
+								{
+									"key": "inscripcion_id",
+									"value": "",
+									"description": "UUID de la inscripción"
+								}
+							]
+						},
+						"description": "Actualizar estado de una inscripción (ACTIVA, PAUSADA, CONCLUIDA, REPROBADA). Requiere autenticación."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de inscripciones a cursos"
+		},
+		{
+			"name": "Progreso",
+			"item": [
+				{
+					"name": "Get Progreso General",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/progreso",
+							"host": ["{{base_url}}"],
+							"path": ["api", "progreso"]
+						},
+						"description": "Obtener progreso general del usuario autenticado. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Progreso Curso",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/progreso/cursos/{{curso_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "progreso", "cursos", "{{curso_id}}"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Obtener progreso detallado de un curso específico. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Progreso Modulo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/progreso/modulos/{{modulo_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "progreso", "modulos", "{{modulo_id}}"],
+							"variable": [
+								{
+									"key": "modulo_id",
+									"value": "",
+									"description": "UUID del módulo"
+								}
+							]
+						},
+						"description": "Obtener progreso detallado de un módulo específico. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Comparacion Progreso",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/progreso/cursos/{{curso_id}}/comparacion",
+							"host": ["{{base_url}}"],
+							"path": ["api", "progreso", "cursos", "{{curso_id}}", "comparacion"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Obtener comparación de progreso del usuario con otros estudiantes. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Metricas Curso",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/progreso/cursos/{{curso_id}}/metricas",
+							"host": ["{{base_url}}"],
+							"path": ["api", "progreso", "cursos", "{{curso_id}}", "metricas"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								}
+							]
+						},
+						"description": "Obtener métricas de progreso de un curso. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Metricas Generales",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/progreso/metricas-generales",
+							"host": ["{{base_url}}"],
+							"path": ["api", "progreso", "metricas-generales"]
+						},
+						"description": "Obtener métricas generales de progreso del usuario. Requiere autenticación."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para consultar progreso y métricas"
+		},
+		{
+			"name": "Foro",
+			"item": [
+				{
+					"name": "List Comentarios",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/foro/cursos/{{curso_id}}/lecciones/{{leccion_id}}/comentarios?skip=0&limit=100",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "cursos", "{{curso_id}}", "lecciones", "{{leccion_id}}", "comentarios"],
+							"query": [
+								{
+									"key": "skip",
+									"value": "0",
+									"description": "Número de registros a omitir"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Número máximo de registros"
+								}
+							],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								},
+								{
+									"key": "leccion_id",
+									"value": "",
+									"description": "UUID de la lección"
+								}
+							]
+						},
+						"description": "Listar comentarios de una lección. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Comentario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"leccion_id\": \"{{leccion_id}}\",\n  \"contenido\": \"Este es un comentario de ejemplo\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foro/cursos/{{curso_id}}/lecciones/{{leccion_id}}/comentarios",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "cursos", "{{curso_id}}", "lecciones", "{{leccion_id}}", "comentarios"],
+							"variable": [
+								{
+									"key": "curso_id",
+									"value": "",
+									"description": "UUID del curso"
+								},
+								{
+									"key": "leccion_id",
+									"value": "",
+									"description": "UUID de la lección"
+								}
+							]
+						},
+						"description": "Crear un nuevo comentario en el foro de una lección. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Comentario",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"contenido\": \"Comentario actualizado\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/foro/comentarios/{{comentario_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "comentarios", "{{comentario_id}}"],
+							"variable": [
+								{
+									"key": "comentario_id",
+									"value": "",
+									"description": "UUID del comentario"
+								}
+							]
+						},
+						"description": "Actualizar un comentario existente. Solo el autor puede actualizar su comentario. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comentario",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/foro/comentarios/{{comentario_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "foro", "comentarios", "{{comentario_id}}"],
+							"variable": [
+								{
+									"key": "comentario_id",
+									"value": "",
+									"description": "UUID del comentario"
+								}
+							]
+						},
+						"description": "Eliminar un comentario. Solo el autor puede eliminar su comentario. Requiere autenticación."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de comentarios en foros"
+		},
+		{
+			"name": "Preferencias",
+			"item": [
+				{
+					"name": "Get Preferencias",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/preferencias",
+							"host": ["{{base_url}}"],
+							"path": ["api", "preferencias"]
+						},
+						"description": "Obtener preferencias de notificación del usuario autenticado. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Preferencias",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email_recordatorios\": true,\n  \"email_motivacion\": true,\n  \"email_resultados\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/preferencias",
+							"host": ["{{base_url}}"],
+							"path": ["api", "preferencias"]
+						},
+						"description": "Actualizar preferencias de notificación del usuario autenticado. Requiere autenticación."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de preferencias de notificación"
+		},
+		{
+			"name": "Certificados",
+			"item": [
+				{
+					"name": "Listar Certificados",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/certificados",
+							"host": ["{{base_url}}"],
+							"path": ["api", "certificados"]
+						},
+						"description": "Listar certificados del usuario autenticado. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Certificado",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"inscripcion_id\": \"{{inscripcion_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/certificados",
+							"host": ["{{base_url}}"],
+							"path": ["api", "certificados"]
+						},
+						"description": "Crear un certificado para una inscripción acreditada. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Certificado Inscripcion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/certificados/inscripciones/{{inscripcion_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "certificados", "inscripciones", "{{inscripcion_id}}"],
+							"variable": [
+								{
+									"key": "inscripcion_id",
+									"value": "",
+									"description": "UUID de la inscripción"
+								}
+							]
+						},
+						"description": "Obtener certificado asociado a una inscripción. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Certificado",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/certificados/{{certificado_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "certificados", "{{certificado_id}}"],
+							"variable": [
+								{
+									"key": "certificado_id",
+									"value": "",
+									"description": "UUID del certificado"
+								}
+							]
+						},
+						"description": "Obtener un certificado por ID. Requiere autenticación."
+					},
+					"response": []
+				},
+				{
+					"name": "Verificar Certificado",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/certificados/{{certificado_id}}/verificar",
+							"host": ["{{base_url}}"],
+							"path": ["api", "certificados", "{{certificado_id}}", "verificar"],
+							"variable": [
+								{
+									"key": "certificado_id",
+									"value": "",
+									"description": "UUID del certificado"
+								}
+							]
+						},
+						"description": "Verificar la validez de un certificado mediante hash. Endpoint público."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Estado Certificado",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/certificados/{{certificado_id}}/estado",
+							"host": ["{{base_url}}"],
+							"path": ["api", "certificados", "{{certificado_id}}", "estado"],
+							"variable": [
+								{
+									"key": "certificado_id",
+									"value": "",
+									"description": "UUID del certificado"
+								}
+							]
+						},
+						"description": "Obtener estado de generación de un certificado (PROCESSING, COMPLETED). Requiere autenticación."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de certificados"
+		},
+		{
+			"name": "Administración",
+			"item": [
+				{
+					"name": "Listar Usuarios",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/usuarios",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "usuarios"]
+						},
+						"description": "Listar todos los usuarios. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Roles Usuario",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roles\": [\"ADMIN\", \"COORDINATOR\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/usuarios/{{usuario_id}}/roles",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "usuarios", "{{usuario_id}}", "roles"],
+							"variable": [
+								{
+									"key": "usuario_id",
+									"value": "",
+									"description": "UUID del usuario"
+								}
+							]
+						},
+						"description": "Actualizar roles de un usuario. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Inscripciones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/inscripciones",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "inscripciones"]
+						},
+						"description": "Listar todas las inscripciones. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Estado Inscripcion",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estado\": \"CONCLUIDA\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/inscripciones/{{inscripcion_id}}/estado",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "inscripciones", "{{inscripcion_id}}", "estado"],
+							"variable": [
+								{
+									"key": "inscripcion_id",
+									"value": "",
+									"description": "UUID de la inscripción"
+								}
+							]
+						},
+						"description": "Actualizar estado de una inscripción. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Intentos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/intentos",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "intentos"]
+						},
+						"description": "Listar todos los intentos de quizzes y exámenes. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Permitir Nuevo Intento",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"permitir_nuevo_intento\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/intentos/{{intento_id}}/permitir-nuevo",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "intentos", "{{intento_id}}", "permitir-nuevo"],
+							"variable": [
+								{
+									"key": "intento_id",
+									"value": "",
+									"description": "UUID del intento"
+								}
+							]
+						},
+						"description": "Permitir un nuevo intento para un quiz o examen. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Reglas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/reglas-acreditacion",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "reglas-acreditacion"]
+						},
+						"description": "Listar todas las reglas de acreditación. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Regla",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"curso_id\": \"{{curso_id}}\",\n  \"tipo_regla\": \"QUIZ\",\n  \"min_puntaje\": 70.0,\n  \"requiere_examen_final\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/reglas-acreditacion",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "reglas-acreditacion"]
+						},
+						"description": "Crear una nueva regla de acreditación. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Regla",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"min_puntaje\": 80.0,\n  \"requiere_examen_final\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/reglas-acreditacion/{{regla_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "reglas-acreditacion", "{{regla_id}}"],
+							"variable": [
+								{
+									"key": "regla_id",
+									"value": "",
+									"description": "UUID de la regla"
+								}
+							]
+						},
+						"description": "Actualizar una regla de acreditación existente. Requiere rol de administrador."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Regla",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/reglas-acreditacion/{{regla_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "reglas-acreditacion", "{{regla_id}}"],
+							"variable": [
+								{
+									"key": "regla_id",
+									"value": "",
+									"description": "UUID de la regla"
+								}
+							]
+						},
+						"description": "Eliminar una regla de acreditación. Requiere rol de administrador."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints de administración. Requieren rol de administrador."
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "id_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

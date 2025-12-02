@@ -132,5 +132,23 @@ class CognitoService:
 
         return resp.json()
 
+    async def sign_out(self, access_token: str) -> None:
+        """Global sign out using Cognito Identity Provider.
+        
+        Invalidates the access token and all other tokens issued to the user.
+        """
+        session = aioboto3.Session()
+        async with session.client("cognito-idp", region_name=self.settings.aws_region) as client:
+            try:
+                await client.global_sign_out(AccessToken=access_token)
+            except Exception as e:
+                # Log error but don't fail, as the main goal is to clear cookies
+                # Token might be already expired or invalid
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Global sign out failed: {e}")
+
+
+import aioboto3
 
 __all__ = ["CognitoService"]

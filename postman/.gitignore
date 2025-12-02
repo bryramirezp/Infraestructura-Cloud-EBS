@@ -1,0 +1,9 @@
+# Tokens - NO compartir nunca
+tokens.json
+*.token
+*.key
+
+# Archivos temporales
+*.tmp
+*.log
+

@@ -287,6 +287,11 @@ async def refresh(request: Request):
 
 @router.post("/logout")
 async def logout(request: Request):
+    # Get access token to invalidate it globally
+    access_token = request.cookies.get("access_token")
+    if access_token:
+        await service.sign_out(access_token)
+
     # Clear cookies
     response = JSONResponse({"status": "logged_out"})
     
@@ -295,32 +300,72 @@ async def logout(request: Request):
     if settings.is_development:
         is_secure = False
     
-    # Prepare cookie deletion parameters
-    # When cookie_domain is None, don't pass it to delete_cookie (FastAPI handles it better)
-    cookie_params = {
-        "path": "/",
-        "httponly": True,
-        "secure": is_secure,
-        "samesite": settings.cookie_samesite,
-    }
+    # IMPORTANT: Delete cookies with EXACT same parameters as creation
+    # In /callback, cookies are created with domain=settings.cookie_domain (even if None)
+    # So we must delete them the same way to ensure browser recognizes them
     
-    # Only add domain if it's not None
-    if settings.cookie_domain:
-        cookie_params["domain"] = settings.cookie_domain
-    
-    # Delete standard auth cookies with exact same attributes as creation
-    # Note: max_age=0 is automatically set by delete_cookie
-    response.delete_cookie("access_token", **cookie_params)
-    response.delete_cookie("refresh_token", **cookie_params)
-    response.delete_cookie("auth_state", **cookie_params)
-    response.delete_cookie("id_token", **cookie_params)
-    response.delete_cookie("auth_nonce", **cookie_params)
+    # Delete standard auth cookies - match exact parameters from /callback
+    response.delete_cookie(
+        "access_token",
+        path="/",
+        domain=settings.cookie_domain,  # Pass even if None to match creation
+        httponly=True,
+        secure=is_secure,
+        samesite=settings.cookie_samesite,
+    )
+    response.delete_cookie(
+        "refresh_token",
+        path="/",
+        domain=settings.cookie_domain,
+        httponly=True,
+        secure=is_secure,
+        samesite=settings.cookie_samesite,
+    )
+    response.delete_cookie(
+        "auth_state",
+        path="/",
+        domain=settings.cookie_domain,
+        httponly=True,
+        secure=is_secure,
+        samesite=settings.cookie_samesite,
+    )
+    response.delete_cookie(
+        "id_token",
+        path="/",
+        domain=settings.cookie_domain,
+        httponly=True,
+        secure=is_secure,
+        samesite=settings.cookie_samesite,
+    )
+    response.delete_cookie(
+        "auth_nonce",
+        path="/",
+        domain=settings.cookie_domain,
+        httponly=True,
+        secure=is_secure,
+        samesite=settings.cookie_samesite,
+    )
     
     # Delete all PKCE cookies dynamically (they have names like pkce_<state>)
-    # Iterate over all cookies to find and delete PKCE cookies
+    # Use same parameters as other cookies
     for cookie_name in request.cookies.keys():
         if cookie_name.startswith("pkce_"):
-            response.delete_cookie(cookie_name, **cookie_params)
+            response.delete_cookie(
+                cookie_name,
+                path="/",
+                domain=settings.cookie_domain,
+                httponly=True,
+                secure=is_secure,
+                samesite=settings.cookie_samesite,
+            )
+    
+    # Log for debugging in development
+    if settings.is_development:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Logout: Attempting to delete cookies")
+        logger.debug(f"Logout: Cookie domain={settings.cookie_domain}, secure={is_secure}, samesite={settings.cookie_samesite}")
+        logger.debug(f"Logout: Cookies in request: {list(request.cookies.keys())}")
         
     return response
 

@@ -320,12 +320,19 @@ export const useAuth = () => {
 
     // Llamar al endpoint /api/auth/logout del backend para limpiar cookies
     // El endpoint está bajo /api/auth según el router del backend
-    // useBaseUrl: false (default) construye: {API_URL}/auth/logout = http://localhost:8000/api/auth/logout
+    // useBaseUrl: false (default) construye: {API_URL}/auth/logout = http://localhost:5000/api/auth/logout
+    // donde API_URL = http://localhost:5000/api y endpoint = /auth/logout
     try {
-      await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+      console.log('[Auth] Iniciando logout, llamando a:', API_ENDPOINTS.AUTH.LOGOUT);
+      const result = await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+      console.log('[Auth] Logout exitoso, respuesta:', result);
     } catch (error) {
       // Si falla el logout del backend, continuar de todas formas
-      console.warn('Error al cerrar sesión en backend:', error);
+      console.warn('[Auth] Error al cerrar sesión en backend:', error);
+      // En desarrollo, mostrar más detalles
+      if ((import.meta as any).env.DEV) {
+        console.error('[Auth] Detalles del error de logout:', error);
+      }
     }
 
     // Limpiar estado local y almacenamiento temporal
@@ -336,6 +343,7 @@ export const useAuth = () => {
       // Ignorar errores al limpiar
     }
 
+    // Limpiar estado primero
     setAuthState({
       user: null,
       isAuthenticated: false,
@@ -343,8 +351,14 @@ export const useAuth = () => {
       error: null,
     });
 
-    // Redirigir a la página de login
-    window.location.href = '/';
+    // Redirigir a la página principal (LandingPage) solo si no estamos ya ahí
+    // No usar window.location.reload() porque puede causar problemas con el estado de React
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/') {
+      // Usar window.location.href para una navegación completa que limpia todo el estado
+      window.location.href = '/';
+    }
+    // Si ya estamos en /, no hacer nada - el estado ya se limpió arriba
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
     // Incluso si hay error, limpiar estado local y redirigir
